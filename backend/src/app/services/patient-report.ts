@@ -1,0 +1,533 @@
+import { prisma } from '../../config/database';
+import { AuthenticatedUser } from '../../config/types/auth';
+import {
+  ICreatePatientReport,
+  IUpdatePatientReport,
+} from '../../config/types/patient-report';
+import { MESSAGES } from '../../utils/messages';
+import { applyBranchScope } from '../../utils/model_helper';
+
+
+export const findAllPatientReports = async (
+  requester: AuthenticatedUser,
+  {
+    page = 1,
+    perPage = 50,
+    searchedValue,
+  }: {
+    page?: number;
+    perPage?: number;
+    searchedValue?: string;
+  } = {}
+) => {
+  try {
+    const pageNumber = Number(page) || 1;
+    const perPageNumber = Number(perPage) || 50;
+    const skip = (pageNumber - 1) * perPageNumber;
+    const baseWhere: Record<string, unknown> = {};
+
+    const where = applyBranchScope(baseWhere, requester);
+
+    if (searchedValue && searchedValue.trim() !== '') {
+      where.OR = [
+        {
+          template: {
+            title: {
+              contains: searchedValue,
+              mode: 'insensitive' as const,
+            },
+          },
+        },
+        {
+          patient: {
+            firstName: {
+              contains: searchedValue,
+              mode: 'insensitive' as const,
+            },
+            middleName: {
+              contains: searchedValue,
+              mode: 'insensitive' as const,
+            },
+            lastName: {
+              contains: searchedValue,
+              mode: 'insensitive' as const,
+            },
+            mobile: {
+              contains: searchedValue,
+            },
+          },
+        },
+      ];
+    }
+
+    const [reports, total, lastReport] = await Promise.all([
+      prisma.patientReport.findMany({
+        where,
+
+        include: {
+          patient: true,
+          template: true,
+          branch: true,
+          organization: true,
+
+          values: {
+            include: {
+              templateSection: {
+                include: {
+                  parameter: true,
+                },
+              },
+            },
+          },
+          images: true,
+          createdByUser: true,
+          updatedByUser: true,
+          createdByAdminUser: true,
+          updatedByAdminUser: true,
+        },
+
+        orderBy: {
+          createdAt: 'desc',
+        },
+
+        skip,
+        take: perPageNumber,
+      }),
+
+      prisma.patientReport.count({
+        where,
+      }),
+
+      prisma.patientReport.findFirst({
+        orderBy: {
+          id: 'desc',
+        },
+        select: {
+          id: true,
+        },
+      }),
+    ]);
+
+    return {
+      success: true,
+      data: reports,
+      message: MESSAGES.PATIENT_REPORT_FETCHED_SUCCESSFULLY,
+      meta: {
+        currentPage: pageNumber,
+        perPage: perPageNumber,
+        total,
+        lastPage: Math.ceil(total / perPageNumber),
+        lastId: lastReport?.id ?? null,
+      },
+    };
+  } catch (error: any) {
+    return {
+      success: false,
+      message: MESSAGES.COMMON_MESSAGES_ERROR,
+      error: error?.message,
+    };
+  }
+};
+
+export const getPatientReportSearch = async (
+  requester: AuthenticatedUser,
+  q?: string
+) => {
+  try {
+    const baseWhere: Record<string, unknown> = {};
+
+    const where = applyBranchScope(baseWhere, requester);
+
+    if (q && q.trim() !== '') {
+      where.OR = [
+        {
+          template: {
+            title: {
+              contains: q,
+            },
+          },
+        },
+      ];
+    }
+
+    const reports = await prisma.patientReport.findMany({
+      where,
+
+      include: {
+        patient: true,
+        template: true,
+      },
+
+      orderBy: {
+        createdAt: 'desc',
+      },
+
+      take: 50,
+    });
+
+    return {
+      success: true,
+      data: reports,
+      message: MESSAGES.PATIENT_REPORT_FETCHED_SUCCESSFULLY,
+    };
+  } catch (error: any) {
+    return {
+      success: false,
+      data: [],
+      message: MESSAGES.COMMON_MESSAGES_ERROR,
+      error: error?.message,
+    };
+  }
+};
+
+export const findPatientReportById = async (id: number) => {
+  try {
+    const report = await prisma.patientReport.findFirst({
+      where: {
+        id,
+      },
+
+      include: {
+        patient: true,
+        template: true,
+        branch: true,
+        organization: true,
+
+        values: {
+          include: {
+            templateSection: {
+              include: {
+                parameter: true,
+              },
+            },
+          },
+
+          orderBy: {
+            templateSection: {
+              sequence: 'asc',
+            },
+          },
+        },
+
+        images: true,
+
+        createdByUser: true,
+        updatedByUser: true,
+        createdByAdminUser: true,
+        updatedByAdminUser: true,
+      },
+    });
+
+    if (!report) {
+      return {
+        success: false,
+        message: MESSAGES.PATIENT_REPORT_NOT_FOUND,
+      };
+    }
+
+    const [next, previous, positionResult, totalResult] = await Promise.all([
+      prisma.patientReport.findFirst({
+        where: {
+          id: {
+            gt: id,
+          },
+        },
+
+        orderBy: {
+          id: 'asc',
+        },
+
+        select: {
+          id: true,
+        },
+      }),
+
+      prisma.patientReport.findFirst({
+        where: {
+          id: {
+            lt: id,
+          },
+        },
+
+        orderBy: {
+          id: 'desc',
+        },
+
+        select: {
+          id: true,
+        },
+      }),
+
+      prisma.patientReport.count({
+        where: {
+          id: {
+            lte: id,
+          },
+        },
+      }),
+
+      prisma.patientReport.count(),
+    ]);
+
+    return {
+      success: true,
+      data: report,
+      message: MESSAGES.PATIENT_REPORT_FETCHED_SUCCESSFULLY,
+
+      meta: {
+        position: positionResult,
+        total: totalResult,
+        nextId: next?.id ?? null,
+        prevId: previous?.id ?? null,
+      },
+    };
+  } catch (error: any) {
+    return {
+      success: false,
+      message: MESSAGES.COMMON_MESSAGES_ERROR,
+      error: error?.message,
+    };
+  }
+};
+
+
+export const createPatientReport = async (
+  payload: ICreatePatientReport
+) => {
+  return prisma.$transaction(async (tx) => {
+    try {
+      const template = await tx.reportTemplate.findFirst({
+        where: {
+          id: payload.templateId,
+        },
+
+        include: {
+          sections: {
+            include: {
+              parameter: true,
+            },
+
+            orderBy: {
+              sequence: 'asc',
+            },
+          },
+        },
+      });
+
+      if (!template) {
+        return {
+          success: false,
+          message: MESSAGES.REPORT_TEMPLATE_NOT_FOUND,
+        };
+      }
+
+      const patient = await tx.patientRegistration.findFirst({
+        where: {
+          id: payload.patientId,
+          isActive: true,
+        },
+      });
+
+      if (!patient) {
+        return {
+          success: false,
+          message: MESSAGES.PATIENT_NOT_FOUND,
+        };
+      }
+
+      const report = await tx.patientReport.create({
+        data: {
+          patientId: payload.patientId,
+          templateId: payload.templateId,
+          organizationId: payload.organizationId ?? null,
+          branchId: payload.branchId ?? null,
+          createdBy: payload.createdBy ?? null,
+          updatedBy: payload.updatedBy ?? null,
+          createdByAdmin: payload.createdByAdmin ?? null,
+          updatedByAdmin: payload.updatedByAdmin ?? null,
+          resourceInfo: payload.resourceInfo ?? null,
+        },
+      });
+
+      if (payload.values?.length) {
+        await tx.patientReportValue.createMany({
+          data: payload.values.map((item) => ({
+            reportId: report.id,
+            templateSectionId: item.templateSectionId,
+            value: item.value,
+
+            createdBy: payload.createdBy ?? null,
+            updatedBy: payload.updatedBy ?? null,
+            createdByAdmin: payload.createdByAdmin ?? null,
+            updatedByAdmin: payload.updatedByAdmin ?? null,
+          })),
+        });
+      }
+
+      if (payload.images?.length) {
+        await tx.patientReportImage.createMany({
+          data: payload.images.map((item) => ({
+            reportId: report.id,
+            templateSectionId: item.templateSectionId ?? null,
+            imagePath: item.imagePath,
+
+            createdBy: payload.createdBy ?? null,
+            updatedBy: payload.updatedBy ?? null,
+            createdByAdmin: payload.createdByAdmin ?? null,
+            updatedByAdmin: payload.updatedByAdmin ?? null,
+          })),
+        });
+      }
+
+      return {
+        success: true,
+        data: report,
+        message: MESSAGES.PATIENT_REPORT_CREATED_SUCCESSFULLY,
+      };
+    } catch (error: any) {
+      return {
+        success: false,
+        message: MESSAGES.COMMON_MESSAGES_ERROR,
+        error: error?.message,
+      };
+    }
+  });
+};
+
+
+export const updatePatientReport = async (
+  id: number,
+  payload: IUpdatePatientReport
+) => {
+  return prisma.$transaction(async (tx) => {
+    try {
+      const existingReport = await tx.patientReport.findFirst({
+        where: {
+          id,
+        },
+      });
+
+      if (!existingReport) {
+        return {
+          success: false,
+          message: MESSAGES.PATIENT_REPORT_NOT_FOUND,
+        };
+      }
+
+      await tx.patientReport.update({
+        where: {
+          id,
+        },
+
+        data: {
+          templateId: payload.templateId,
+          updatedBy: payload.updatedBy ?? null,
+          updatedByAdmin: payload.updatedByAdmin ?? null,
+          resourceInfo: payload.resourceInfo ?? null,
+        },
+      });
+
+
+      await tx.patientReportValue.deleteMany({
+        where: {
+          reportId: id,
+        },
+      });
+
+      await tx.patientReportImage.deleteMany({
+        where: {
+          reportId: id,
+        },
+      });
+
+      if (payload.values?.length) {
+        await tx.patientReportValue.createMany({
+          data: payload.values.map((item) => ({
+            reportId: id,
+            templateSectionId: item.templateSectionId,
+            value: item.value,
+            createdBy: payload.createdBy ?? null,
+            updatedBy: payload.updatedBy ?? null,
+            createdByAdmin: payload.createdByAdmin ?? null,
+            updatedByAdmin: payload.updatedByAdmin ?? null,
+          })),
+        });
+      }
+
+      if (payload.images?.length) {
+        await tx.patientReportImage.createMany({
+          data: payload.images.map((item) => ({
+            reportId: id,
+            templateSectionId: item.templateSectionId ?? null,
+            imagePath: item.imagePath ?? '',
+            createdBy: payload.createdBy ?? null,
+            updatedBy: payload.updatedBy ?? null,
+            createdByAdmin: payload.createdByAdmin ?? null,
+            updatedByAdmin: payload.updatedByAdmin ?? null,
+          })),
+        });
+      }
+
+      return {
+        success: true,
+        message: MESSAGES.PATIENT_REPORT_UPDATED_SUCCESSFULLY,
+      };
+    } catch (error: any) {
+      return {
+        success: false,
+        message: MESSAGES.COMMON_MESSAGES_ERROR,
+        error: error?.message,
+      };
+    }
+  });
+};
+
+// ---------------------------------------------------------------------------
+// Delete Patient Report
+// ---------------------------------------------------------------------------
+
+export const deletePatientReport = async (id: number) => {
+  try {
+    const existingReport = await prisma.patientReport.findFirst({
+      where: {
+        id,
+      },
+    });
+
+    if (!existingReport) {
+      return {
+        success: false,
+        message: MESSAGES.PATIENT_REPORT_NOT_FOUND,
+      };
+    }
+
+    await prisma.patientReportValue.deleteMany({
+      where: {
+        reportId: id,
+      },
+    });
+
+    await prisma.patientReportImage.deleteMany({
+      where: {
+        reportId: id,
+      },
+    });
+
+    await prisma.patientReport.delete({
+      where: {
+        id,
+      },
+    });
+
+    return {
+      success: true,
+      message: MESSAGES.PATIENT_REPORT_DELETED_SUCCESSFULLY,
+    };
+  } catch (error: any) {
+    return {
+      success: false,
+      message: MESSAGES.COMMON_MESSAGES_ERROR,
+      error: error?.message,
+    };
+  }
+};

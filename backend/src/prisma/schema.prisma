@@ -1,0 +1,534 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model AdminUser {
+  id           Int      @id @default(autoincrement())
+  name         String   @map("name")
+  email        String   @unique
+  mobile       String   @default("")
+  password     String
+  isAdmin      Boolean  @default(true) @map("is_admin")
+  resourceInfo String?  @map("resource_info")
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  organizationsCreated Organization[] @relation("OrganizationCreatedByAdmin")
+  organizationsUpdated Organization[] @relation("OrganizationUpdatedByAdmin")
+
+  branchesCreated Branch[] @relation("BranchCreatedByAdmin")
+  branchesUpdated Branch[] @relation("BranchUpdatedByAdmin")
+
+  usersCreated User[] @relation("UserCreatedByAdmin")
+  usersUpdated User[] @relation("UserUpdatedByAdmin")
+
+  configurationsCreated ConfigurationModule[] @relation("ConfigCreatedByAdmin")
+  configurationsUpdated ConfigurationModule[] @relation("ConfigUpdatedByAdmin")
+
+  patientsCreated PatientRegistration[] @relation("PatientCreatedByAdmin")
+  patientsUpdated PatientRegistration[] @relation("PatientUpdatedByAdmin")
+
+  recordingSessionsCreated RecordingSession[] @relation("RecordingSessionCreatedByAdmin")
+  recordingSessionsUpdated RecordingSession[] @relation("RecordingSessionUpdatedByAdmin")
+
+  captureImagesCreated CaptureImage[] @relation("CaptureImageCreatedByAdmin")
+  captureImagesUpdated CaptureImage[] @relation("CaptureImageUpdatedByAdmin")
+
+  reportTemplatesCreated ReportTemplate[] @relation("ReportTemplateCreatedByAdmin")
+  reportTemplatesUpdated ReportTemplate[] @relation("ReportTemplateUpdatedByAdmin")
+
+  parameterMastersCreated ParameterMaster[] @relation("ParameterMasterCreatedByAdmin")
+  parameterMastersUpdated ParameterMaster[] @relation("ParameterMasterUpdatedByAdmin")
+
+  reportSectionsCreated ReportTemplateSection[] @relation("ReportSectionCreatedByAdmin")
+  reportSectionsUpdated ReportTemplateSection[] @relation("ReportSectionUpdatedByAdmin")
+
+  patientReportsCreated PatientReport[] @relation("PatientReportCreatedByAdmin")
+  patientReportsUpdated PatientReport[] @relation("PatientReportUpdatedByAdmin")
+
+  patientReportValuesCreated PatientReportValue[] @relation("PatientReportValueCreatedByAdmin")
+  patientReportValuesUpdated PatientReportValue[] @relation("PatientReportValueUpdatedByAdmin")
+
+  patientReportImagesCreated PatientReportImage[] @relation("PatientReportImageCreatedByAdmin")
+  patientReportImagesUpdated PatientReportImage[] @relation("PatientReportImageUpdatedByAdmin")
+
+  @@map("admin_users")
+}
+
+model AuthAccessToken {
+  id         Int       @id @default(autoincrement())
+  tokenId    String    @unique @map("token_id")
+  actorId    Int       @map("actor_id")
+  userType   String    @map("user_type")
+  type       String
+  token      String
+  ability    String?   @map("ablity")
+  lastUsedAt DateTime? @map("last_used_at")
+  expiresAt  DateTime? @map("expires_at")
+  createdAt  DateTime  @default(now()) @map("created_at")
+  updatedAt  DateTime  @updatedAt @map("updated_at")
+
+  @@map("auth_access_tokens")
+}
+
+model Organization {
+  id             Int      @id @default(autoincrement())
+  name           String
+  bannerImage    String?  @map("banner_image")
+  logoImage      String?  @map("logo_image")
+  legalName      String?  @map("legal_name")
+  email          String   @unique
+  mobile         String?
+  licenseKey     String?  @map("license_key")
+  licenseType    String?  @map("license_type")
+  expiryDate     String?  @map("expiry_date")
+  status         String?
+  isActive       Boolean  @default(true) @map("is_active")
+  resourceInfo   String?  @map("resource_info")
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @updatedAt @map("updated_at")
+  createdBy      Int?     @map("created_by")
+  updatedBy      Int?     @map("updated_by")
+  createdByAdmin Int?     @map("created_by_admin")
+  updatedByAdmin Int?     @map("updated_by_admin")
+
+  branches           Branch[]
+  users              User[]
+  configurations     ConfigurationModule[]
+  patients           PatientRegistration[]
+  recordingSessions  RecordingSession[]
+  reportTemplates    ReportTemplate[]
+  patientReports     PatientReport[]
+  parameterMasters   ParameterMaster[]
+  createdByUser      User?                 @relation("OrganizationCreatedByUser", fields: [createdBy], references: [id])
+  updatedByUser      User?                 @relation("OrganizationUpdatedByUser", fields: [updatedBy], references: [id])
+  createdByAdminUser AdminUser?            @relation("OrganizationCreatedByAdmin", fields: [createdByAdmin], references: [id])
+  updatedByAdminUser AdminUser?            @relation("OrganizationUpdatedByAdmin", fields: [updatedByAdmin], references: [id])
+
+  @@map("organizations")
+}
+
+model Branch {
+  id             Int          @id @default(autoincrement())
+  organizationId Int          @map("organization_id")
+  organization   Organization @relation(fields: [organizationId], references: [id])
+  code           String?
+  isDefault      Boolean      @default(false) @map("is_default")
+  legalName      String?      @map("legal_name")
+  name           String
+  address        String?
+  logoImage      String?      @map("logo_image")
+  bannerImage    String?      @map("banner_image")
+  phoneNumber    String?      @map("phone_number")
+  mobile         String?
+  email          String
+  website        String?
+  rohiniId       String?      @map("rohini_id")
+  gstNo          String?      @map("gst_no")
+  jurisdiction   String?
+  city           String?
+  state          String?
+  country        String?
+  zipCode        String?      @map("zip_code")
+  isActive       Boolean      @default(true) @map("is_active")
+  timezone       String?      @map("timezone")
+  resourceInfo   String?      @map("resource_info")
+  createdAt      DateTime     @default(now()) @map("created_at")
+  updatedAt      DateTime     @updatedAt @map("updated_at")
+  createdBy      Int?         @map("created_by")
+  updatedBy      Int?         @map("updated_by")
+  createdByAdmin Int?         @map("created_by_admin")
+  updatedByAdmin Int?         @map("updated_by_admin")
+
+  users              User[]
+  configurations     ConfigurationModule[]
+  patients           PatientRegistration[]
+  recordingSessions  RecordingSession[]
+  reportTemplates    ReportTemplate[]
+  patientReports     PatientReport[]
+  parameterMasters   ParameterMaster[]
+  createdByUser      User?                 @relation("BranchCreatedBy", fields: [createdBy], references: [id])
+  updatedByUser      User?                 @relation("BranchUpdatedBy", fields: [updatedBy], references: [id])
+  createdByAdminUser AdminUser?            @relation("BranchCreatedByAdmin", fields: [createdByAdmin], references: [id])
+  updatedByAdminUser AdminUser?            @relation("BranchUpdatedByAdmin", fields: [updatedByAdmin], references: [id])
+
+  @@map("branches")
+}
+
+model User {
+  id                  Int      @id @default(autoincrement())
+  fullName            String?  @map("full_name")
+  isActive            Boolean  @default(true) @map("is_active")
+  email               String   @unique
+  mobile              String   @default("")
+  password            String
+  isOrganizationAdmin Boolean  @default(false) @map("is_organization_admin")
+  isOtpRequired       Boolean  @default(false) @map("is_otp_required")
+  canSwitchBranch     Boolean  @default(false) @map("can_switch_branch")
+  organizationId      Int?     @map("organization_id")
+  branchId            Int?     @map("branch_id")
+  resourceInfo        String?  @map("resource_info")
+  createdAt           DateTime @default(now()) @map("created_at")
+  updatedAt           DateTime @updatedAt @map("updated_at")
+  createdBy           Int?     @map("created_by")
+  updatedBy           Int?     @map("updated_by")
+  createdByAdmin      Int?     @map("created_by_admin")
+  updatedByAdmin      Int?     @map("updated_by_admin")
+
+  organization Organization? @relation(fields: [organizationId], references: [id])
+  branch       Branch?       @relation(fields: [branchId], references: [id])
+
+  createdByUser      User?      @relation("UserCreatedBy", fields: [createdBy], references: [id])
+  updatedByUser      User?      @relation("UserUpdatedBy", fields: [updatedBy], references: [id])
+  createdByAdminUser AdminUser? @relation("UserCreatedByAdmin", fields: [createdByAdmin], references: [id])
+  updatedByAdminUser AdminUser? @relation("UserUpdatedByAdmin", fields: [updatedByAdmin], references: [id])
+
+  usersCreatedByMe           User[]                  @relation("UserCreatedBy")
+  usersUpdatedByMe           User[]                  @relation("UserUpdatedBy")
+  orgsCreated                Organization[]          @relation("OrganizationCreatedByUser")
+  orgsUpdated                Organization[]          @relation("OrganizationUpdatedByUser")
+  branchesCreated            Branch[]                @relation("BranchCreatedBy")
+  branchesUpdated            Branch[]                @relation("BranchUpdatedBy")
+  configurationsCreated      ConfigurationModule[]   @relation("ConfigCreatedByUser")
+  configurationsUpdated      ConfigurationModule[]   @relation("ConfigUpdatedByUser")
+  patientsCreated            PatientRegistration[]   @relation("PatientCreatedByUser")
+  patientsUpdated            PatientRegistration[]   @relation("PatientUpdatedByUser")
+  recordingSessionsCreated   RecordingSession[]      @relation("RecordingSessionCreatedByUser")
+  recordingSessionsUpdated   RecordingSession[]      @relation("RecordingSessionUpdatedByUser")
+  captureImagesCreated       CaptureImage[]          @relation("CaptureImageCreatedByUser")
+  captureImagesUpdated       CaptureImage[]          @relation("CaptureImageUpdatedByUser")
+  reportTemplatesCreated     ReportTemplate[]        @relation("ReportTemplateCreatedByUser")
+  reportTemplatesUpdated     ReportTemplate[]        @relation("ReportTemplateUpdatedByUser")
+  parameterMastersCreated    ParameterMaster[]       @relation("ParameterMasterCreatedByUser")
+  parameterMastersUpdated    ParameterMaster[]       @relation("ParameterMasterUpdatedByUser")
+  reportSectionsCreated      ReportTemplateSection[] @relation("ReportSectionCreatedByUser")
+  reportSectionsUpdated      ReportTemplateSection[] @relation("ReportSectionUpdatedByUser")
+  patientReportsCreated      PatientReport[]         @relation("PatientReportCreatedByUser")
+  patientReportsUpdated      PatientReport[]         @relation("PatientReportUpdatedByUser")
+  patientReportValuesCreated PatientReportValue[]    @relation("PatientReportValueCreatedByUser")
+  patientReportValuesUpdated PatientReportValue[]    @relation("PatientReportValueUpdatedByUser")
+  patientReportImagesCreated PatientReportImage[]    @relation("PatientReportImageCreatedByUser")
+  patientReportImagesUpdated PatientReportImage[]    @relation("PatientReportImageUpdatedByUser")
+
+  @@map("users")
+}
+
+model ConfigurationModule {
+  id             Int      @id @default(autoincrement())
+  module         String
+  subModule      String   @map("sub_module")
+  fieldKey       String   @map("field_key")
+  fieldLabel     String   @map("field_label")
+  fieldType      String   @map("field_type")
+  value          String?
+  defaultValue   String?  @map("default_value")
+  meta           String?
+  isActive       Boolean  @default(true) @map("is_active")
+  priority       Int      @default(0)
+  branchId       Int?     @map("branch_id")
+  organizationId Int?     @map("organization_id")
+  resourceInfo   String?  @map("resource_info")
+  createdBy      Int?     @map("created_by")
+  updatedBy      Int?     @map("updated_by")
+  createdByAdmin Int?     @map("created_by_admin")
+  updatedByAdmin Int?     @map("updated_by_admin")
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @updatedAt @map("updated_at")
+
+  branch             Branch?       @relation(fields: [branchId], references: [id])
+  organization       Organization? @relation(fields: [organizationId], references: [id])
+  createdByUser      User?         @relation("ConfigCreatedByUser", fields: [createdBy], references: [id])
+  updatedByUser      User?         @relation("ConfigUpdatedByUser", fields: [updatedBy], references: [id])
+  createdByAdminUser AdminUser?    @relation("ConfigCreatedByAdmin", fields: [createdByAdmin], references: [id])
+  updatedByAdminUser AdminUser?    @relation("ConfigUpdatedByAdmin", fields: [updatedByAdmin], references: [id])
+
+  @@map("configurations_modules")
+}
+
+model PatientRegistration {
+  id               Int      @id @default(autoincrement())
+  recordId         String   @map("recordid")
+  uhid             String   @map("uhid")
+  firstName        String   @map("first_name")
+  middleName       String?  @map("middle_name")
+  lastName         String   @map("last_name")
+  registrationDate String   @map("registration_date")
+  caseDate         String   @map("case_date")
+  category         String?  @map("category")
+  birthDate        String?  @map("birth_date")
+  age              Int?
+  ageUnit          String?  @map("age_unit")
+  sex              String?
+  weddingDate      String?  @map("wedding_date")
+  hospitalDoctor   String?  @map("hospital_doctor")
+  referenceDoctor  String?  @map("reference_doctor")
+  language         String?
+  religion         String?
+  height           Float?
+  weight           Float?
+  bloodGroup       String?  @map("blood_group")
+  maritalStatus    String?  @map("marital_status")
+  mobile           String
+  mobile2          String?  @map("mobile_2")
+  office           String?
+  email            String?
+  address          String?
+  area             String?
+  city             String?
+  state            String?  @default("Gujarat")
+  pin              String?
+  nationality      String?  @default("India")
+  typeOfVisa       String?  @map("type_of_visa")
+  adharCard        String?  @map("adhar_card")
+  estimate         String?  @map("estimate")
+  profileImage     String?  @map("profile_image")
+  panCard          String?  @map("pan_card")
+  membershipId     String?  @map("membership_id")
+  employeesId      String?  @map("employees_id")
+  occupation       String?
+  spouseOccupation String?  @map("spouse_occupation")
+  companyName      String?  @map("company_name")
+  education        String?
+  yojanaCardNo     String?  @map("yojana_card_no")
+  mediclaim        Boolean  @default(false)
+  remark           String?
+  referralTo       String?  @map("referral_to")
+  transfer         String?
+  isActive         Boolean  @default(true) @map("is_active")
+  branchId         Int?     @map("branch_id")
+  organizationId   Int?     @map("organization_id")
+  resourceInfo     String?  @map("resource_info")
+  createdBy        Int?     @map("created_by")
+  updatedBy        Int?     @map("updated_by")
+  createdByAdmin   Int?     @map("created_by_admin")
+  updatedByAdmin   Int?     @map("updated_by_admin")
+  createdAt        DateTime @default(now()) @map("created_at")
+  updatedAt        DateTime @updatedAt @map("updated_at")
+
+  recordingSessions  RecordingSession[]
+  patientReports     PatientReport[]
+  branch             Branch?            @relation(fields: [branchId], references: [id])
+  organization       Organization?      @relation(fields: [organizationId], references: [id])
+  createdByUser      User?              @relation("PatientCreatedByUser", fields: [createdBy], references: [id])
+  updatedByUser      User?              @relation("PatientUpdatedByUser", fields: [updatedBy], references: [id])
+  createdByAdminUser AdminUser?         @relation("PatientCreatedByAdmin", fields: [createdByAdmin], references: [id])
+  updatedByAdminUser AdminUser?         @relation("PatientUpdatedByAdmin", fields: [updatedByAdmin], references: [id])
+
+  @@map("patient_registrations")
+}
+
+model RecordingSession {
+  id              Int       @id @default(autoincrement())
+  sessionCode     String    @unique @map("session_code")
+  patientId       Int?      @map("patient_id")
+  remark          String?
+  mimeType        String?   @map("mime_type")
+  captureDate     String?   @map("capture_date")
+  entryDate       String?   @map("entry_date")
+  liveHlsPath     String?   @map("live_hls_path")
+  finalVideoPath  String?   @map("final_video_path")
+  thumbnailPath   String?   @map("thumbnail_path")
+  startedAt       DateTime  @default(now()) @map("started_at")
+  stoppedAt       DateTime? @map("stopped_at")
+  durationSeconds Int?      @map("duration_seconds")
+  status          String    @default("RECORDING")
+  branchId        Int?      @map("branch_id")
+  organizationId  Int?      @map("organization_id")
+  resourceInfo    String?   @map("resource_info")
+  createdAt       DateTime  @default(now()) @map("created_at")
+  updatedAt       DateTime  @updatedAt @map("updated_at")
+  createdBy       Int?      @map("created_by")
+  updatedBy       Int?      @map("updated_by")
+  createdByAdmin  Int?      @map("created_by_admin")
+  updatedByAdmin  Int?      @map("updated_by_admin")
+
+  captures           CaptureImage[]
+  patient            PatientRegistration? @relation(fields: [patientId], references: [id])
+  branch             Branch?              @relation(fields: [branchId], references: [id])
+  organization       Organization?        @relation(fields: [organizationId], references: [id])
+  createdByUser      User?                @relation("RecordingSessionCreatedByUser", fields: [createdBy], references: [id])
+  updatedByUser      User?                @relation("RecordingSessionUpdatedByUser", fields: [updatedBy], references: [id])
+  createdByAdminUser AdminUser?           @relation("RecordingSessionCreatedByAdmin", fields: [createdByAdmin], references: [id])
+  updatedByAdminUser AdminUser?           @relation("RecordingSessionUpdatedByAdmin", fields: [updatedByAdmin], references: [id])
+
+  @@map("recording_sessions")
+}
+
+model CaptureImage {
+  id             Int      @id @default(autoincrement())
+  sessionId      Int      @map("session_id")
+  imagePath      String   @map("image_path")
+  capturedAt     DateTime @default(now()) @map("captured_at")
+  resourceInfo   String?  @map("resource_info")
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @updatedAt @map("updated_at")
+  createdBy      Int?     @map("created_by")
+  updatedBy      Int?     @map("updated_by")
+  createdByAdmin Int?     @map("created_by_admin")
+  updatedByAdmin Int?     @map("updated_by_admin")
+
+  session            RecordingSession @relation(fields: [sessionId], references: [id])
+  createdByUser      User?            @relation("CaptureImageCreatedByUser", fields: [createdBy], references: [id])
+  updatedByUser      User?            @relation("CaptureImageUpdatedByUser", fields: [updatedBy], references: [id])
+  createdByAdminUser AdminUser?       @relation("CaptureImageCreatedByAdmin", fields: [createdByAdmin], references: [id])
+  updatedByAdminUser AdminUser?       @relation("CaptureImageUpdatedByAdmin", fields: [updatedByAdmin], references: [id])
+
+  @@map("capture_images")
+}
+
+model ReportTemplate {
+  id             Int      @id @default(autoincrement())
+  title          String
+  code           String?  @unique
+  maxImages      Int      @default(0)
+  isActive       Boolean  @default(true) @map("is_active")
+  organizationId Int?     @map("organization_id")
+  branchId       Int?     @map("branch_id")
+  resourceInfo   String?  @map("resource_info")
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @updatedAt @map("updated_at")
+  createdBy      Int?     @map("created_by")
+  updatedBy      Int?     @map("updated_by")
+  createdByAdmin Int?     @map("created_by_admin")
+  updatedByAdmin Int?     @map("updated_by_admin")
+
+  sections           ReportTemplateSection[]
+  reports            PatientReport[]
+  organization       Organization?           @relation(fields: [organizationId], references: [id])
+  branch             Branch?                 @relation(fields: [branchId], references: [id])
+  createdByUser      User?                   @relation("ReportTemplateCreatedByUser", fields: [createdBy], references: [id])
+  updatedByUser      User?                   @relation("ReportTemplateUpdatedByUser", fields: [updatedBy], references: [id])
+  createdByAdminUser AdminUser?              @relation("ReportTemplateCreatedByAdmin", fields: [createdByAdmin], references: [id])
+  updatedByAdminUser AdminUser?              @relation("ReportTemplateUpdatedByAdmin", fields: [updatedByAdmin], references: [id])
+
+  @@map("report_templates")
+}
+
+model ParameterMaster {
+  id             Int      @id @default(autoincrement())
+  name           String
+  inputType      String?
+  defaultValue   String?
+  isHeading      Boolean  @default(false)
+  isActive       Boolean  @default(true) @map("is_active")
+  organizationId Int?     @map("organization_id")
+  branchId       Int?     @map("branch_id")
+  resourceInfo   String?  @map("resource_info")
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @updatedAt @map("updated_at")
+  createdBy      Int?     @map("created_by")
+  updatedBy      Int?     @map("updated_by")
+  createdByAdmin Int?     @map("created_by_admin")
+  updatedByAdmin Int?     @map("updated_by_admin")
+
+  templateLinks      ReportTemplateSection[]
+  branch             Branch?                 @relation(fields: [branchId], references: [id])
+  organization       Organization?           @relation(fields: [organizationId], references: [id])
+  createdByUser      User?                   @relation("ParameterMasterCreatedByUser", fields: [createdBy], references: [id])
+  updatedByUser      User?                   @relation("ParameterMasterUpdatedByUser", fields: [updatedBy], references: [id])
+  createdByAdminUser AdminUser?              @relation("ParameterMasterCreatedByAdmin", fields: [createdByAdmin], references: [id])
+  updatedByAdminUser AdminUser?              @relation("ParameterMasterUpdatedByAdmin", fields: [updatedByAdmin], references: [id])
+
+  @@map("parameter_masters")
+}
+
+model ReportTemplateSection {
+  id             Int      @id @default(autoincrement())
+  templateId     Int      @map("template_id")
+  parameterId    Int      @map("parameter_id")
+  sequence       Int
+  isRequired     Boolean  @default(false)
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @updatedAt @map("updated_at")
+  createdBy      Int?     @map("created_by")
+  updatedBy      Int?     @map("updated_by")
+  createdByAdmin Int?     @map("created_by_admin")
+  updatedByAdmin Int?     @map("updated_by_admin")
+
+  template           ReportTemplate       @relation(fields: [templateId], references: [id])
+  parameter          ParameterMaster      @relation(fields: [parameterId], references: [id])
+  reportValues       PatientReportValue[]
+  reportImages       PatientReportImage[]
+  createdByUser      User?                @relation("ReportSectionCreatedByUser", fields: [createdBy], references: [id])
+  updatedByUser      User?                @relation("ReportSectionUpdatedByUser", fields: [updatedBy], references: [id])
+  createdByAdminUser AdminUser?           @relation("ReportSectionCreatedByAdmin", fields: [createdByAdmin], references: [id])
+  updatedByAdminUser AdminUser?           @relation("ReportSectionUpdatedByAdmin", fields: [updatedByAdmin], references: [id])
+
+  @@map("report_template_sections")
+}
+
+model PatientReport {
+  id             Int      @id @default(autoincrement())
+  patientId      Int      @map("patient_id")
+  templateId     Int      @map("template_id")
+  organizationId Int?     @map("organization_id")
+  branchId       Int?     @map("branch_id")
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @updatedAt @map("updated_at")
+  createdBy      Int?     @map("created_by")
+  updatedBy      Int?     @map("updated_by")
+  createdByAdmin Int?     @map("created_by_admin")
+  updatedByAdmin Int?     @map("updated_by_admin")
+
+  patient            PatientRegistration  @relation(fields: [patientId], references: [id])
+  template           ReportTemplate       @relation(fields: [templateId], references: [id])
+  values             PatientReportValue[]
+  images             PatientReportImage[]
+  organization       Organization?        @relation(fields: [organizationId], references: [id])
+  branch             Branch?              @relation(fields: [branchId], references: [id])
+  createdByUser      User?                @relation("PatientReportCreatedByUser", fields: [createdBy], references: [id])
+  updatedByUser      User?                @relation("PatientReportUpdatedByUser", fields: [updatedBy], references: [id])
+  createdByAdminUser AdminUser?           @relation("PatientReportCreatedByAdmin", fields: [createdByAdmin], references: [id])
+  updatedByAdminUser AdminUser?           @relation("PatientReportUpdatedByAdmin", fields: [updatedByAdmin], references: [id])
+
+  @@map("patient_reports")
+}
+
+model PatientReportValue {
+  id                Int      @id @default(autoincrement())
+  reportId          Int      @map("report_id")
+  templateSectionId Int      @map("template_section_id")
+  value             String?
+  createdAt         DateTime @default(now()) @map("created_at")
+  updatedAt         DateTime @updatedAt @map("updated_at")
+  createdBy         Int?     @map("created_by")
+  updatedBy         Int?     @map("updated_by")
+  createdByAdmin    Int?     @map("created_by_admin")
+  updatedByAdmin    Int?     @map("updated_by_admin")
+
+  report             PatientReport         @relation(fields: [reportId], references: [id])
+  templateSection    ReportTemplateSection @relation(fields: [templateSectionId], references: [id])
+  createdByUser      User?                 @relation("PatientReportValueCreatedByUser", fields: [createdBy], references: [id])
+  updatedByUser      User?                 @relation("PatientReportValueUpdatedByUser", fields: [updatedBy], references: [id])
+  createdByAdminUser AdminUser?            @relation("PatientReportValueCreatedByAdmin", fields: [createdByAdmin], references: [id])
+  updatedByAdminUser AdminUser?            @relation("PatientReportValueUpdatedByAdmin", fields: [updatedByAdmin], references: [id])
+
+  @@map("patient_report_values")
+}
+
+model PatientReportImage {
+  id                Int      @id @default(autoincrement())
+  reportId          Int      @map("report_id")
+  templateSectionId Int?     @map("template_section_id")
+  imagePath         String   @map("image_path")
+  createdAt         DateTime @default(now()) @map("created_at")
+  updatedAt         DateTime @updatedAt @map("updated_at")
+  createdBy         Int?     @map("created_by")
+  updatedBy         Int?     @map("updated_by")
+  createdByAdmin    Int?     @map("created_by_admin")
+  updatedByAdmin    Int?     @map("updated_by_admin")
+
+  report             PatientReport          @relation(fields: [reportId], references: [id])
+  templateSection    ReportTemplateSection? @relation(fields: [templateSectionId], references: [id])
+  createdByUser      User?                  @relation("PatientReportImageCreatedByUser", fields: [createdBy], references: [id])
+  updatedByUser      User?                  @relation("PatientReportImageUpdatedByUser", fields: [updatedBy], references: [id])
+  createdByAdminUser AdminUser?             @relation("PatientReportImageCreatedByAdmin", fields: [createdByAdmin], references: [id])
+  updatedByAdminUser AdminUser?             @relation("PatientReportImageUpdatedByAdmin", fields: [updatedByAdmin], references: [id])
+
+  @@map("patient_report_images")
+}
