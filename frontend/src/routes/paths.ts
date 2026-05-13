@@ -90,5 +90,25 @@ export const paths = {
       list: `${ROOTS.DASHBOARD}/report/list`,
       edit: (id: number) => `${ROOTS.DASHBOARD}/report/${id}/edit`,
     },
+    parameterMaster: {
+      root: `${ROOTS.DASHBOARD}/parameterMaster`,
+      new: `${ROOTS.DASHBOARD}/parameterMaster/new`,
+    },
+    reportType: {
+      root: `${ROOTS.DASHBOARD}/reportType`,
+      new: `${ROOTS.DASHBOARD}/reportType/new`,
+    },
+    reportTemplate: {
+      root: `${ROOTS.DASHBOARD}/reportTemplate`,
+      new: `${ROOTS.DASHBOARD}/reportTemplate/new`,
+      list: `${ROOTS.DASHBOARD}/reportTemplate/list`,
+      edit: (id: number) => `${ROOTS.DASHBOARD}/reportTemplate/${id}/edit`,
+    },
+    endoscopyReport: {
+      root: `${ROOTS.DASHBOARD}/endoscopyReport`,
+      new: `${ROOTS.DASHBOARD}/endoscopyReport/new`,
+      list: `${ROOTS.DASHBOARD}/endoscopyReport/list`,
+      edit: (id: number) => `${ROOTS.DASHBOARD}/endoscopyReport/${id}/edit`,
+    },
   },
 };

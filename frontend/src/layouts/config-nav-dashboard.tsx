@@ -12,7 +12,6 @@ const ICONS = {
   chat: icon('ic-chat'),
   mail: icon('ic-mail'),
   // user: icon('ic-user'),
-  file: icon('ic-file'),
   lock: icon('ic-lock'),
   tour: icon('ic-tour'),
   order: icon('ic-order'),
@@ -32,11 +31,11 @@ const ICONS = {
   ecommerce: icon('ic-ecommerce'),
   analytics: icon('ic-analytics'),
   dashboard: icon('ic-dashboard'),
-  parameter: icon('ic-parameter'),
 
   userprofile: icon('mdi:account-circle-outline'),
-
-  userrolepermission: icon('mdi:account-cog'),
+  parameter: icon('mdi:format-list-bulleted-type'),
+  reportTemplate: icon('mdi:clipboard-text-outline'),
+  reportType: icon('mdi:file-chart-outline'),
   user: icon('hugeicons:user-group'),
   PatientRegistration: icon('medical-icon:administration'),
   ConfigurationModule: icon('hugeicons:configuration-01'),
@@ -145,7 +144,33 @@ export const navData = [
    */
   {
     subheader: 'Master',
-    items: [],
+    items: [
+      {
+        title: 'Parameter Master',
+        path: paths.dashboard.parameterMaster.new,
+        icon: ICONS.parameter,
+      },
+      {
+        title: 'Report Type Master',
+        path: paths.dashboard.reportType.new,
+        icon: ICONS.reportType,
+      },
+      {
+        title: 'Report Template',
+        path: paths.dashboard.reportTemplate?.root,
+        icon: ICONS.reportTemplate,
+        children: [
+          {
+            title: 'list',
+            path: paths.dashboard.reportTemplate?.list,
+          },
+          {
+            title: 'create',
+            path: paths.dashboard.reportTemplate?.new,
+          },
+        ],
+      },
+    ],
   },
   {
     subheader: 'Opd',

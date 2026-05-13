@@ -1,23 +1,3 @@
-/**
- * recording.ts  (service layer)
- *
- * Orchestrates recording sessions end-to-end:
- *  - Creates / updates RecordingSession and CaptureImage rows in the DB.
- *  - Delegates file I/O to storageService.
- *  - Delegates FFmpeg work to ffmpegService.
- *  - Enforces the camera-capture feature flag from ConfigurationModule.
- *
- * Public API
- * ──────────
- *  startSession()      → create DB row + ensure fs dirs
- *  appendChunk()       → save raw binary chunk to disk
- *  stopSession()       → finalise DB row + run FFmpeg concat + extract thumbnail
- *  saveCaptureImage()  → check feature flag + save image + create DB row
- *  listSessions()      → paginated list from DB
- *  getSessionByCode()  → single session by sessionCode
- *  listCaptures()      → all capture images for a session
- */
-
 import fs from 'fs';
 import path from 'path';
 import { prisma } from '../../config/database';
@@ -32,6 +12,7 @@ import { applyBranchScope, assignCreatedBy, assignUpdatedBy } from '../../utils/
 import * as storageService from './storage';
 import * as ffmpegService from './ffmpeg';
 import { RecordingStatus } from 'endoscopy-shared';
+import { getRecordingsPath } from './storage';
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -83,8 +64,42 @@ export async function startSession(
         },
     });
 
+    // ── recording.json ─────────────────────────────
+
+    const recordingMeta = {
+        sessionId: sessionCode,
+        patientId: payload.patientId ?? 'unknown',
+        date: date,
+        source: 'frontend-browser',
+        deviceName: 'Browser camera',
+        mimeType: payload.mimeType ?? 'video/webm',
+        chunkExtension: chunkExtensionFromMime(payload.mimeType),
+        startTime: new Date().toISOString(),
+        endTime: null,
+        status: 'recording',
+        chunkDuration: 10,
+        chunks: [],
+        totalDuration: 0,
+        liveHlsUrl: null,
+        finalMp4: null,
+        hlsReady: false,
+        hlsMasterUrl: null,
+        thumbnailsReady: false,
+        thumbnails: [],
+        error: null,
+    };
+
+    await storageService.writeRecordingMeta(
+        recordingsBase,
+        payload.patientId ?? 'unknown',
+        date,
+        sessionCode,
+        recordingMeta
+    );
+
+
     return {
-        status: true,
+        success: true,
         message: MESSAGES.RECORDING_STARTED_SUCCESSFULLY,
         data: {
             ...session,
@@ -123,7 +138,7 @@ export async function appendChunk(
     });
 
     if (!session) throw new AppError(404, MESSAGES.RECORDING_SESSION_NOT_FOUND);
-    if (session.status !== 'RECORDING') {
+    if (session.status !== RecordingStatus.Recording) {
         throw new AppError(409, MESSAGES.RECORDING_NOT_IN_PROGRESS);
     }
 
@@ -141,23 +156,49 @@ export async function appendChunk(
     await fs.promises.mkdir(chunkDir, { recursive: true });
 
     const chunkPath = path.join(chunkDir, filename);
-    await fs.promises.writeFile(chunkPath, buffer);
+    await fs.promises.writeFile(chunkPath, buffer, {
+        flag: 'wx',
+    });
+    const stat = await fs.promises.stat(chunkPath);
 
-    // Normalise fragmented MP4 chunks so FFmpeg concat works correctly.
-    if (ext === 'mp4') {
-        await ffmpegService.normalizeMp4Chunk(chunkPath);
+    // ── recording.json update ─────────────────────
+
+    const meta = await storageService.readRecordingMeta(
+        recordingsBase,
+        session.patientId ?? 'unknown',
+        date,
+        sessionCode
+    );
+
+    if (meta) {
+        const chunks = Array.isArray(meta.chunks)
+            ? meta.chunks
+            : [];
+
+        chunks.push({
+            index: chunkIndex,
+            filename,
+            size: stat.size,
+            createdAt: new Date().toISOString(),
+        });
+
+        meta.chunks = chunks;
+
+        await storageService.writeRecordingMeta(
+            recordingsBase,
+            session.patientId ?? 'unknown',
+            date,
+            sessionCode,
+            meta
+        );
     }
 
-    const stat = await fs.promises.stat(chunkPath);
     return { filename, size: stat.size };
 }
 
 // ── Stop recording ────────────────────────────────────────────────────────────
 
-/**
- * Mark the session as STOPPED, concatenate chunks into final.mp4, extract thumbnail,
- * optionally copy the session to the backup path.
- */
+
 export async function stopSession(
     sessionCode: string,
     user: AuthenticatedUser,
@@ -199,10 +240,9 @@ export async function stopSession(
         const chunks = await storageService.listChunkFiles(chunkDir);
 
         if (chunks.length > 0) {
-            await ffmpegService.concatChunks(chunks, finalPath);
+            await ffmpegService.mergeChunks(chunks, finalPath);
             finalVideoPath = finalPath;
 
-            // Best-effort thumbnail; non-fatal if it fails.
             try {
                 await ffmpegService.extractThumbnail(finalPath, thumbPath);
                 thumbnailPath = thumbPath;
@@ -211,13 +251,41 @@ export async function stopSession(
             }
         }
 
-        // Best-effort backup; non-fatal.
+        // recording.json update
+
+        const meta = await storageService.readRecordingMeta(
+            recordingsBase,
+            patId,
+            date,
+            sessionCode
+        );
+
+        if (meta) {
+            meta.status = RecordingStatus.Ready;
+            meta.endTime = new Date().toISOString();
+            meta.totalDuration = durationSeconds ?? 0;
+            meta.finalMp4 = 'final.mp4';
+            meta.thumbnailsReady = !!thumbnailPath;
+            meta.error = null;
+
+
+            await storageService.writeRecordingMeta(
+                recordingsBase,
+                patId,
+                date,
+                sessionCode,
+                meta
+            );
+        }
+
+        // BackUp
         try {
             const backupBase = await storageService.getBackupPath(session.branchId, session.organizationId);
             await storageService.backupSession(sessionDir, backupBase, patId, date, sessionCode);
         } catch {
             console.warn(`[recording] backup failed for ${sessionCode}`);
         }
+
 
         const updated = await prisma.recordingSession.update({
             where: { sessionCode },
@@ -232,7 +300,7 @@ export async function stopSession(
         });
 
         return {
-            status: true,
+            success: true,
             message: MESSAGES.RECORDING_STOPPED_SUCCESSFULLY,
             data: updated,
         };
@@ -249,15 +317,9 @@ export async function stopSession(
 
 // ── Camera capture ────────────────────────────────────────────────────────────
 
-/**
- * Save a still image captured from the browser camera.
- *
- * Checks the feature flag (recording > camera > enable_capture) before proceeding.
- * Accepts the image as a base64-encoded data URL string.
- */
 export async function saveCaptureImage(
     sessionCode: string,
-    imageBase64: string,
+    file: Express.Multer.File,
     user: AuthenticatedUser
 ) {
     const session = await prisma.recordingSession.findUnique({
@@ -267,8 +329,8 @@ export async function saveCaptureImage(
 
     if (!session) throw new AppError(404, MESSAGES.RECORDING_SESSION_NOT_FOUND);
 
-    // Feature flag check.
     const captureEnabled = await storageService.isCameraCaptureEnabled(
+        user.userType,
         session.branchId,
         session.organizationId
     );
@@ -276,13 +338,14 @@ export async function saveCaptureImage(
         throw new AppError(403, MESSAGES.CAMERA_CAPTURE_DISABLED);
     }
 
-    // Decode base64 → binary buffer.
-    const base64Data = imageBase64.replace(/^data:image\/\w+;base64,/, '');
-    const imageBuffer = Buffer.from(base64Data, 'base64');
-    if (imageBuffer.length === 0) {
-        throw new AppError(400, MESSAGES.INVALID_IMAGE_DATA);
+    if (!file || !file.buffer) {
+        throw new AppError(
+            400,
+            MESSAGES.INVALID_IMAGE_DATA
+        );
     }
 
+    const imageBuffer = file.buffer;
     const audit = assignCreatedBy(user);
     const date = storageService.todayDateString();
     const recordingsBase = await storageService.getRecordingsPath(session.branchId, session.organizationId);
@@ -295,14 +358,25 @@ export async function saveCaptureImage(
 
     await fs.promises.mkdir(capturesDir, { recursive: true });
 
-    const filename = `cap_${Date.now()}.jpg`;
+    const extension = path.extname(file.originalname) || '.png';
+    const filename = `cap_${Date.now()}${extension}`;
+
+    const relativePath = storageService.getCaptureRelativePath(
+        session.patientId ?? 'unknown',
+        date,
+        sessionCode,
+        filename
+    );
+
     const imagePath = path.join(capturesDir, filename);
+
     await fs.promises.writeFile(imagePath, imageBuffer);
 
     const capture = await prisma.captureImage.create({
         data: {
             sessionId: session.id,
-            imagePath,
+            imagePath: relativePath,
+            capturedAt: new Date(),
             resourceInfo: audit.resourceInfo,
             createdBy: audit.createdBy,
             createdByAdmin: audit.createdByAdmin,
@@ -312,7 +386,7 @@ export async function saveCaptureImage(
     });
 
     return {
-        status: true,
+        success: true,
         message: MESSAGES.CAPTURE_IMAGE_SAVED_SUCCESSFULLY,
         data: capture,
     };
@@ -367,7 +441,7 @@ export async function listSessions(
     const lastPage = Math.ceil(total / perPageNumber);
 
     return {
-        status: true,
+        success: true,
         message: MESSAGES.RECORDING_LIST_FETCHED_SUCCESSFULLY,
         data: sessions,
         meta: {
@@ -393,6 +467,8 @@ export async function getSessionByCode(id: number) {
                     captures: true,
                 },
             },
+            branch: true,
+            organization: true,
             createdByAdminUser: true,
             updatedByAdminUser: true,
             createdByUser: true,
@@ -419,9 +495,9 @@ export async function getSessionByCode(id: number) {
         prisma.recordingSession.count({ where: { id: { lte: id } } }),
         prisma.recordingSession.count(),
     ]);
-    
+
     return {
-        status: true,
+        success: true,
         message: MESSAGES.RECORDING_FETCHED_SUCCESSFULLY,
         data: session,
         meta: {
@@ -443,14 +519,21 @@ export async function listCaptures(sessionCode: string) {
 
     if (!session) throw new AppError(404, MESSAGES.RECORDING_SESSION_NOT_FOUND);
 
+    const basePath = await storageService.getRecordingsPath();
+
     const captures = await prisma.captureImage.findMany({
         where: { sessionId: session.id },
-        orderBy: { capturedAt: 'desc' },
+        orderBy: { capturedAt: 'asc' },
     });
 
+    const capturesWithUrls = captures.map(capture => ({
+        ...capture,
+        imageUrl: `${basePath}/${capture.imagePath}`,
+    }));
+
     return {
-        status: true,
+        success: true,
         message: MESSAGES.CAPTURE_IMAGES_FETCHED_SUCCESSFULLY,
-        data: captures,
+        data: capturesWithUrls,
     };
 }

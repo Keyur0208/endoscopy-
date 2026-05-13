@@ -1,7 +1,7 @@
+import type { IRecordingSession } from 'src/types/recording';
 import type { ICurrentPaginatedResponse } from 'src/types/pagination-fillter';
 
 import CameraCaptureNewEditForm from '../camera-capture-new-edit-form';
-import { IRecordingSession } from 'src/types/recording';
 
 // ----------------------------------------------------------------------
 

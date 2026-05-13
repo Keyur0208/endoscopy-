@@ -13,7 +13,7 @@ import {
   getPatientReportByIdController,
   getPatientReportsController,
   updatePatientReportController,
-  getPatientWiseReportsController,
+  // getPatientWiseReportsController,
 } from '../app/controllers/patient-report';
 
 import {
@@ -21,6 +21,7 @@ import {
   UpdatePatientReportValidator,
   PatientReportIdParamValidator,
 } from '../app/validations/patient-report';
+import { PatientIdParamValidator } from '../app/validations/patient';
 
 const patientReportRouter = Router();
 
@@ -34,12 +35,12 @@ patientReportRouter
     createPatientReportController
   );
 
-patientReportRouter
-  .route('/patient/:patientId')
-  .get(
-    PatientIdParamValidator,
-    getPatientWiseReportsController
-  );
+// patientReportRouter
+//   .route('/patient/:patientId')
+//   .get(
+//     PatientIdParamValidator,
+//     getPatientWiseReportsController
+//   );
 
 patientReportRouter
   .route('/:id')

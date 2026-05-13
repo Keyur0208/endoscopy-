@@ -28,7 +28,7 @@ export const CONFIG: ConfigValue = {
   site: {
     name: 'Nilkanth Medico Software',
     serverUrl: import.meta.env.VITE_API ?? '',
-    serverPort: import.meta.env.VITE_API_PORT ?? '1111',
+    serverPort: import.meta.env.VITE_API_PORT ?? '5555',
     viteExe: import.meta.env.VITE_EXE === 'true',
     assetURL: import.meta.env.VITE_ASSET_URL ?? '',
     basePath: import.meta.env.VITE_BASE_PATH ?? '',

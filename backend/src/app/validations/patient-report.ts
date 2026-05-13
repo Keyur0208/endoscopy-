@@ -1,12 +1,12 @@
 import { celebrate, Joi, Segments } from 'celebrate';
 
-// =========================
-// Patient Report
-// =========================
-
 export const CreatePatientReportValidator = celebrate({
   [Segments.BODY]: Joi.object({
+    reportTypeId: Joi.number().integer().positive().required(),
     patientId: Joi.number().integer().positive().required(),
+    reportDate: Joi.string().isoDate().optional(),
+    entryDate: Joi.string().isoDate().optional(),
+    remark: Joi.string().trim().allow(null, '').optional(),
     templateId: Joi.number().integer().positive().required(),
     organizationId: Joi.number()
       .integer()
@@ -57,6 +57,24 @@ export const CreatePatientReportValidator = celebrate({
 
 export const UpdatePatientReportValidator = celebrate({
   [Segments.BODY]: Joi.object({
+    patientId: Joi.number().integer().positive().required(),
+    reportTypeId: Joi.number().integer().positive().required(),
+    templateId: Joi.number().integer().positive().required(),
+    reportDate: Joi.string().isoDate().optional(),
+    entryDate: Joi.string().isoDate().optional(),
+    remark: Joi.string().trim().allow(null, '').optional(),
+    organizationId: Joi.number()
+      .integer()
+      .positive()
+      .allow(null)
+      .optional(),
+
+    branchId: Joi.number()
+      .integer()
+      .positive()
+      .allow(null)
+      .optional(),
+
     values: Joi.array()
       .items(
         Joi.object({

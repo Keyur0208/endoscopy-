@@ -42,25 +42,36 @@ const ConfigurationModuleCreatePage = lazy(
 );
 
 // Patient Registration
-const PatientRegistrationListView = lazy(
+const PatientRegistrationListPage = lazy(
   () => import('src/pages/dashboard/patient-registration/list')
 );
 const PatientRegistrationEditPage = lazy(
   () => import('src/pages/dashboard/patient-registration/edit')
 );
-const PatientRegistrationCreateView = lazy(
+const PatientRegistrationCreatePage = lazy(
   () => import('src/pages/dashboard/patient-registration/new')
 );
 
 // Camera Capture
-const CameraCaptureListView = lazy(() => import('src/pages/dashboard/camera-capture/list'));
+const CameraCaptureListPage = lazy(() => import('src/pages/dashboard/camera-capture/list'));
 const CameraCaptureEditPage = lazy(() => import('src/pages/dashboard/camera-capture/edit'));
-const CameraCaptureCreateView = lazy(() => import('src/pages/dashboard/camera-capture/new'));
+const CameraCaptureCreatePage = lazy(() => import('src/pages/dashboard/camera-capture/new'));
 
 // EndoScopy Report
-const ReportListView = lazy(() => import('src/pages/dashboard/endoscopy-report/list'));
+const ReportListPage = lazy(() => import('src/pages/dashboard/endoscopy-report/list'));
 const ReportEditPage = lazy(() => import('src/pages/dashboard/endoscopy-report/edit'));
-const ReportCreateView = lazy(() => import('src/pages/dashboard/endoscopy-report/new'));
+const ReportCreatePage = lazy(() => import('src/pages/dashboard/endoscopy-report/new'));
+
+// Parameter Master
+const ParameterMasterCreatePage = lazy(() => import('src/pages/dashboard/parameter-master/new'));
+
+// Report Template
+const ReportTemplateListPage = lazy(() => import('src/pages/dashboard/report-template/list'));
+const ReportTemplateEditPage = lazy(() => import('src/pages/dashboard/report-template/edit'));
+const ReportTemplateCreatePage = lazy(() => import('src/pages/dashboard/report-template/new'));
+
+// Report Type
+const ReportTypeCreatePage = lazy(() => import('src/pages/dashboard/report-type/new'));
 
 // ----------------------------------------------------------------------
 
@@ -176,11 +187,11 @@ export const dashboardRoutes = [
         children: [
           {
             path: 'list',
-            element: <PatientRegistrationListView />,
+            element: <PatientRegistrationListPage />,
           },
           {
             path: 'new',
-            element: <PatientRegistrationCreateView />,
+            element: <PatientRegistrationCreatePage />,
           },
           {
             path: ':id/edit',
@@ -194,11 +205,11 @@ export const dashboardRoutes = [
         children: [
           {
             path: 'list',
-            element: <CameraCaptureListView />,
+            element: <CameraCaptureListPage />,
           },
           {
             path: 'new',
-            element: <CameraCaptureCreateView />,
+            element: <CameraCaptureCreatePage />,
           },
           {
             path: ':id/edit',
@@ -212,15 +223,53 @@ export const dashboardRoutes = [
         children: [
           {
             path: 'list',
-            element: <ReportListView />,
+            element: <ReportListPage />,
           },
           {
             path: 'new',
-            element: <ReportCreateView />,
+            element: <ReportCreatePage />,
           },
           {
             path: ':id/edit',
             element: <ReportEditPage />,
+          },
+        ],
+      },
+      // Parameter Master
+      {
+        path: 'parameterMaster',
+        children: [
+          {
+            path: 'new',
+            element: <ParameterMasterCreatePage />,
+          },
+        ],
+      },
+      // Report Template
+      {
+        path: 'reportTemplate',
+        children: [
+          {
+            path: 'list',
+            element: <ReportTemplateListPage />,
+          },
+          {
+            path: 'new',
+            element: <ReportTemplateCreatePage />,
+          },
+          {
+            path: ':id/edit',
+            element: <ReportTemplateEditPage />,
+          },
+        ],
+      },
+      // Report Type
+      {
+        path: 'reportType',
+        children: [
+          {
+            path: 'new',
+            element: <ReportTypeCreatePage />,
           },
         ],
       },

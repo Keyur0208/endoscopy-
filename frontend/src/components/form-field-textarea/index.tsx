@@ -78,6 +78,7 @@ export default function RHFFormFieldTextArea({
       <Field.Text
         inputProps={{
           'data-nav': skip ? 'skip' : undefined,
+          readOnly: readonly,
         }}
         autoFocus={autoFocus}
         name={name}

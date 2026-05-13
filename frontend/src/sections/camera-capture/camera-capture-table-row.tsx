@@ -1,4 +1,5 @@
 import type { IRecordingSession } from 'src/types/recording';
+
 import { MenuList } from '@mui/material';
 import MenuItem from '@mui/material/MenuItem';
 import TableRow from '@mui/material/TableRow';
@@ -94,11 +95,15 @@ export default function CameraCaptureTableRow({
         )}
 
         {selectedColumns.includes('createdBy') && (
-          <TableCell sx={{ whiteSpace: 'nowrap' }}>{row?.createdBy?.fullName || row?.createdByAdminUser?.fullName || '-'}</TableCell>
+          <TableCell sx={{ whiteSpace: 'nowrap' }}>
+            {row?.createdBy?.fullName || row?.createdByAdminUser?.fullName || '-'}
+          </TableCell>
         )}
 
         {selectedColumns.includes('updatedBy') && (
-          <TableCell sx={{ whiteSpace: 'nowrap' }}>{row?.updatedBy?.fullName || row?.updatedByAdminUser?.fullName || '-'}</TableCell>
+          <TableCell sx={{ whiteSpace: 'nowrap' }}>
+            {row?.updatedBy?.fullName || row?.updatedByAdminUser?.fullName || '-'}
+          </TableCell>
         )}
 
         {selectedColumns.includes('resourceInfo') && (

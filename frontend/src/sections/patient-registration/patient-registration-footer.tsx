@@ -207,22 +207,21 @@ const PatientRegisterFormButton: React.FC<PatientRegisterFormButtonProps> = ({
 
       <Stack>
         {currentData && (
-            <CommonButton
-                variant="contained"
-                sx={{
-                  backgroundColor: theme.palette.primary.main,
-                  fontSize: isMobile ? '0.8rem' : '13px',
-                  width: isMobile ? '100%' : 'auto',
-                  '&:hover': {
-                    backgroundColor: theme.palette.primary.main,
-                  },
-                }}
-                onClick={handleCameraCapture}
-              >
-                Camera Capture
-              </CommonButton>
-          )
-        }
+          <CommonButton
+            variant="contained"
+            sx={{
+              backgroundColor: theme.palette.primary.main,
+              fontSize: isMobile ? '0.8rem' : '13px',
+              width: isMobile ? '100%' : 'auto',
+              '&:hover': {
+                backgroundColor: theme.palette.primary.main,
+              },
+            }}
+            onClick={handleCameraCapture}
+          >
+            Camera Capture
+          </CommonButton>
+        )}
       </Stack>
 
       <Stack direction="row" gap={1} alignItems="flex-start">

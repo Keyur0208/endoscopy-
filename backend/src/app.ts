@@ -15,6 +15,10 @@ import helmet from 'helmet';
 import patientReportRouter from './routes/patient-report';
 import parameterMasterRouter from './routes/parameter-master';
 import reportTemplateRouter from './routes/report';
+import reportTypeRouter from './routes/report-type';
+import * as storageService from './app/services/storage';
+import path from 'path';
+import fs from 'fs';
 
 const app = express();
 app.use(cors());
@@ -36,7 +40,11 @@ app.all("*", function (req, res, next) {
   );
   next();
 });
-app.use(helmet());
+app.use(
+  helmet({
+    crossOriginResourcePolicy: false,
+  })
+);
 app.use(express.json());
 
 // App -> route -> controller -> service -> model.
@@ -49,6 +57,30 @@ app.get('/', (_req, res) => {
   res.status(200).json({ message: 'Welcome to the API' });
 });
 
+
+app.use(
+  '/uploads',
+  async (req, res, next) => {
+    try {
+      const recordingsPath =
+        await storageService.getRecordingsPath();
+
+      const filePath = path.join(
+        recordingsPath,
+        req.path
+      );
+
+      if (!fs.existsSync(filePath)) {
+        return res.status(404).json({ message: 'File not found' });
+      }
+      return res.sendFile(filePath);
+
+    } catch (error) {
+      next(error);
+    }
+  }
+);
+
 app.use('/auth', authRouter);
 app.use('/users', userRouter);
 app.use('/admin/organizations', organizationRouter);
@@ -57,6 +89,7 @@ app.use('/configurations', configurationRouter);
 app.use('/patient-registrations', patientRouter);
 app.use('/recordings', recordingRouter);
 app.use('/patient-reports', patientReportRouter);
+app.use('/report-types', reportTypeRouter);
 app.use('/report-templates', reportTemplateRouter);
 app.use('/parameter-masters', parameterMasterRouter);
 
@@ -76,5 +109,4 @@ const startServer = async (): Promise<void> => {
     process.exit(1);
   }
 };
-
 void startServer();

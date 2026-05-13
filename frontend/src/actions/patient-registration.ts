@@ -111,6 +111,7 @@ export async function createPatientRegistration(
       toast.success('Patient registration created successfully');
       return res.data?.data;
     }
+    toast.error(`Failed to create patient registration: ${res?.data?.message || 'Unknown error'}`);
     return null;
   } catch (error) {
     toast.error(
@@ -136,11 +137,15 @@ export async function updatePatientRegistration(
     const res = await axios.put(url, { patientRegistrationId, ...patientRegistrationData });
     if (res?.data?.status === true) {
       toast.success('Patient registration updated successfully');
+      return res.data?.data;
     }
+    toast.error(`Failed to update patient registration: ${res?.data?.message || 'Unknown error'}`);
+    return null;
   } catch (error) {
     toast.error(
       `Failed to update patient registration: ${error?.response?.data?.message || error.message}`
     );
+    return null;
   }
 }
 
@@ -151,8 +156,10 @@ export async function deletePatientRegistration(patientRegistrationId: number) {
     const res = await axios.delete(url);
     if (res?.data?.status === true) {
       toast.success('Patient registration deleted successfully');
+      return res;
     }
-    return res;
+    toast.error(`Failed to delete patient registration: ${res?.data?.message || 'Unknown error'}`);
+    return null;
   } catch (error) {
     toast.error(
       `Failed to delete patient registration: ${error?.response?.data?.message || error.message}`

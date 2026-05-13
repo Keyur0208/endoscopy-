@@ -118,14 +118,14 @@ export const captureImageController = asyncHandler<AuthenticatedRequest>(
     async (req: AuthenticatedRequest, res: Response) => {
         const user = getRequestUser(req);
         const sessionCode = req.params['sessionCode'] as string;
-        const { imageData } = req.body as { imageData?: string };
+        const file = req.file; 
 
-        if (!imageData || typeof imageData !== 'string') {
-            res.status(400).json({ success: false, message: 'imageData (base64) is required' });
+        if (!file || !file.buffer) {
+            res.status(400).json({ success: false, message: 'Image file is required' });
             return;
         }
 
-        const result = await saveCaptureImage(sessionCode, imageData, user);
+        const result = await saveCaptureImage(sessionCode, file, user);
         res.status(201).json(result);
     }
 );

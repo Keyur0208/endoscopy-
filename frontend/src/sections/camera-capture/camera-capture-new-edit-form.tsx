@@ -1,7 +1,11 @@
 import type { ICurrentPaginatedResponse } from 'src/types/pagination-fillter';
+import type {
+  IRecordingSession,
+  ICreateRecordingSession,
+} from 'src/types/recording';
 
-import { mutate } from 'swr';
 import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
 import { useRef, useMemo, useState, useEffect, useCallback } from 'react';
 
 import Box from '@mui/material/Box';
@@ -13,6 +17,18 @@ import { useRouter, useSearchParams } from 'src/routes/hooks';
 import { usePagination } from 'src/hooks/use-pagination';
 import { useStatusDialog } from 'src/hooks/use-status-dialog';
 
+import { CONFIG } from 'src/config-global';
+import { CameraCaptureSchema } from 'src/validator/camera-capture-validator';
+import { useGetPatientRegistration } from 'src/actions/patient-registration';
+import {
+  useGetCaptures,
+  uploadCapturedImage,
+  stopRecordingSession,
+  uploadRecordingChunk,
+  startRecordingSession,
+  useGetRecordingSessions,
+} from 'src/actions/camera-capture';
+
 import BodyCard from 'src/components/body-card';
 import { Form } from 'src/components/hook-form';
 import { Iconify } from 'src/components/iconify';
@@ -21,37 +37,23 @@ import { ConfirmDialog } from 'src/components/custom-dialog';
 import { useTimezone } from 'src/components/time-zone/useTimezoneDate';
 import { GenderField } from 'src/components/selection/gender-selection';
 
-import {
-  useGetCaptures,
-  uploadCapturedImage,
-  stopRecordingSession,
-  startRecordingSession,
-  uploadRecordingChunk,
-  useGetRecordingSessions,
-} from 'src/actions/camera-capture';
-
 import { CameraCaptureHeader } from './camera-capture-header';
 import CameraCaptureFormButton from './camera-capture-footer';
-import { zodResolver } from '@hookform/resolvers/zod';
-import { PatientRegistrationSchema } from 'src/validator/patient-registration-validator';
-import { ICreateRecordingSession, IRecordingSession } from 'src/types/recording';
-import { CameraCaptureSchema } from 'src/validator/camera-capture-validator';
-import { useGetPatientRegistration } from 'src/actions/patient-registration';
 
 // ── Recording helpers ────────────────────────────────────────────────────────
 const CHUNK_MS = 5000;
 
 function getSupportedMimeType() {
-    const candidates = [
-        'video/mp4;codecs=avc1',
-        'video/mp4;codecs=h264',
-        'video/mp4',
-        'video/webm;codecs=vp9',
-        'video/webm;codecs=vp8',
-        'video/webm',
-    ];
+  const candidates = [
+    'video/mp4;codecs=avc1',
+    'video/mp4;codecs=h264',
+    'video/mp4',
+    'video/webm;codecs=vp9',
+    'video/webm;codecs=vp8',
+    'video/webm',
+  ];
 
-    return candidates.find((mimeType) => window.MediaRecorder?.isTypeSupported?.(mimeType)) || '';
+  return candidates.find((mimeType) => window.MediaRecorder?.isTypeSupported?.(mimeType)) || '';
 }
 
 type Props = {
@@ -96,9 +98,9 @@ export default function CameraCaptureNewEditForm({
   } = usePagination({
     items: recordingSessions,
     meta: recordingSessionsMeta,
-    currentisLoading: currentisLoading,
+    currentisLoading,
     currentItem: currentData,
-    currentMeta: currentMeta,
+    currentMeta,
     routeGenerator: (id) => paths.dashboard.cameraCapture.edit(id),
     fallbackRoute: paths.dashboard.cameraCapture.new,
     listRouter: paths.dashboard.cameraCapture.list,
@@ -106,9 +108,7 @@ export default function CameraCaptureNewEditForm({
   });
 
   // Patient Registration Search Form Id
-  const [patientId, setPatientId] = useState<number | null>(patientIdFromQuery);
   const checkPatientId = currentData?.patientId || patientIdFromQuery || null;
-
   const { patientRegistration } = useGetPatientRegistration(checkPatientId);
 
   const defaultValues = useMemo(
@@ -146,14 +146,6 @@ export default function CameraCaptureNewEditForm({
     formState: { isSubmitting },
   } = methods;
 
-  useEffect(() => {
-    reset(defaultValues);
-  }, [defaultValues, reset, currentData]);
-
-  const handleExitHistory = () => {
-    router.back();
-  };
-
   // ── Camera Capture State & Refs ──────────────────────────────────────
   const videoRef = useRef<HTMLVideoElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
@@ -167,8 +159,6 @@ export default function CameraCaptureNewEditForm({
   const [isRecording, setIsRecording] = useState(false);
   const [sessionId, setSessionId] = useState<string | null>(null);
   const [recordingError, setRecordingError] = useState<string | null>(null);
-  const [capturedImages, setCapturedImages] = useState<{ url: string; name: string }[]>([]);
-
   const { captures, refreshCaptures } = useGetCaptures(sessionId);
 
   const onSubmit = handleSubmit((data: any) => {
@@ -203,32 +193,33 @@ export default function CameraCaptureNewEditForm({
       const canvas = document.createElement('canvas');
       canvas.width = video.videoWidth || 1280;
       canvas.height = video.videoHeight || 720;
-      const localUrl = canvas.toDataURL('image/png');
-      const fileName = `IMG_${Date.now()}.png`;
-      if (sessionIdRef.current) {
-        canvas.toBlob(async (blob) => {
-          if (blob) {
-            try {
-              const res = await uploadCapturedImage({
-                sessionId: sessionIdRef.current!,
-                blob,
-                name: fileName,
-              });
+      const ctx = canvas.getContext('2d');
 
-              if (res) {
-                setCapturedImages((prev) => [...prev, { url: res.url, name: res.name }]);
-                refreshCaptures();
-              }
-            } catch (err) {
-              console.error('Error uploading captured image:', err);
+      if (!ctx) return;
+      ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+      const fileName = `IMG_${Date.now()}.png`;
+
+      canvas.toBlob(async (blob) => {
+        if (!blob) return;
+        if (sessionIdRef.current) {
+          try {
+            const res = await uploadCapturedImage({
+              sessionId: sessionIdRef.current,
+              blob,
+              name: fileName,
+            });
+
+            if (res?.success) {
+              refreshCaptures();
             }
+          } catch (err: any) {
+            console.error('Error uploading captured image:', err);
           }
-        }, 'image/png');
-      } else {
-        setCapturedImages((prev) => [...prev, { url: localUrl, name: fileName }]);
-      }
-    } catch (err) {
-      console.error('Error stopping camera capture:', err);
+        }
+      }, 'image/png');
+    } catch (err: any) {
+      console.error('Error capturing image:', err);
+
       setRecordingError(err?.message || 'Camera access denied');
     }
   }, [isCameraActive, refreshCaptures]);
@@ -255,7 +246,6 @@ export default function CameraCaptureNewEditForm({
         : new MediaRecorder(streamRef.current!);
 
       recorder.ondataavailable = (e) => {
-
         if (!e.data || e.data.size === 0 || !sessionIdRef.current) return;
 
         const index = chunkIndexRef.current++;
@@ -307,6 +297,30 @@ export default function CameraCaptureNewEditForm({
     setIsRecording(false);
   }, []);
 
+  useEffect(() => {
+    reset(defaultValues);
+    setSessionId(currentData?.sessionCode || null);
+  }, [defaultValues, reset, currentData]);
+
+  const handleExitHistory = () => {
+    router.back();
+  };
+
+  const handleCreateReport = () => {
+    if (!currentData) {
+      showDialog('Camera Capture', 'Please Save Patient Data ', 'info', {
+        hideCancel: true,
+        confirmLabel: 'OK',
+        onConfirm: () => {
+          hideDialog();
+        },
+      });
+      return;
+    }
+    router.push(
+      `${paths.dashboard.report.new}?patientId=${currentData?.patientId || ''}&sessionCode=${currentData?.sessionCode || ''}`
+    );
+  };
 
   return (
     <>
@@ -477,7 +491,7 @@ export default function CameraCaptureNewEditForm({
                 <Box gridColumn="span 4">
                   <RHFFormField
                     label="Remarks"
-                    name="remarks"
+                    name="remark"
                     BoxSx={{
                       textAlign: 'start',
                       '& .MuiOutlinedInput-root': {
@@ -604,58 +618,57 @@ export default function CameraCaptureNewEditForm({
                     md: 'span 1',
                   }}
                 >
-                  <Box
-                    sx={{
-                      display: 'flex',
-                      flexDirection: 'column',
-                      height: '100%',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      gap: 1.2,
-                    }}
-                  >
-                    {/* Start / Stop Capture */}
-                    <Button
-                      variant="contained"
-                      fullWidth
-                      color={isCameraActive ? 'error' : 'primary'}
-                      onClick={isCameraActive ? handleStopCapture : handleStartCapture}
-                      sx={{ fontWeight: 600, fontSize: 13 }}
+                  {!currentData && (
+                    <Box
+                      sx={{
+                        display: 'flex',
+                        flexDirection: 'column',
+                        height: '100%',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        gap: 1.2,
+                      }}
                     >
-                      {isCameraActive ? 'Stop Capture' : 'Start Capture'}
-                    </Button>
-                    {/* Capture Image */}
-                    <Button
-                      variant="contained"
-                      fullWidth
-                      color="success"
-                      disabled={!isCameraActive}
-                      onClick={handleCaptureImage}
-                      sx={{ fontWeight: 600, fontSize: 13 }}
-                    >
-                      Capture Image
-                    </Button>
-                    {/* Video Start / Stop */}
-                    <Button
-                      variant="contained"
-                      fullWidth
-                      color={isRecording ? 'error' : 'warning'}
-                      disabled={!isCameraActive}
-                      onClick={isRecording ? handleVideoStop : handleVideoStart}
-                      sx={{ fontWeight: 600, fontSize: 13 }}
-                    >
-                      {isRecording ? 'Video Stop' : 'Video Start'}
-                    </Button>
-                    {recordingError && (
-                      <Typography
-                        variant="caption"
-                        color="error"
-                        sx={{ fontSize: 10, textAlign: 'center' }}
+                      <Button
+                        variant="contained"
+                        fullWidth
+                        color={isCameraActive ? 'error' : 'primary'}
+                        onClick={isCameraActive ? handleStopCapture : handleStartCapture}
+                        sx={{ fontWeight: 600, fontSize: 13 }}
                       >
-                        {recordingError}
-                      </Typography>
-                    )}
-                  </Box>
+                        {isCameraActive ? 'Stop Capture' : 'Start Capture'}
+                      </Button>
+                      <Button
+                        variant="contained"
+                        fullWidth
+                        color="success"
+                        disabled={!isCameraActive}
+                        onClick={handleCaptureImage}
+                        sx={{ fontWeight: 600, fontSize: 13 }}
+                      >
+                        Capture Image
+                      </Button>
+                      <Button
+                        variant="contained"
+                        fullWidth
+                        color={isRecording ? 'error' : 'warning'}
+                        disabled={!isCameraActive}
+                        onClick={isRecording ? handleVideoStop : handleVideoStart}
+                        sx={{ fontWeight: 600, fontSize: 13 }}
+                      >
+                        {isRecording ? 'Video Stop' : 'Video Start'}
+                      </Button>
+                      {recordingError && (
+                        <Typography
+                          variant="caption"
+                          color="error"
+                          sx={{ fontSize: 10, textAlign: 'center' }}
+                        >
+                          {recordingError}
+                        </Typography>
+                      )}
+                    </Box>
+                  )}
                 </Box>
                 <Box
                   gridColumn={{
@@ -663,19 +676,26 @@ export default function CameraCaptureNewEditForm({
                     md: 'span 4',
                   }}
                 >
-                  {/* Merge local captures (immediate) with server captures (uploaded) */}
-                  {/* {(() => {
-                    const serverUrls = new Set(captures.map((c) => c.name));
-                    const localOnly = capturedImages.filter((img) => !serverUrls.has(img.name));
-                    const allImages: { url: string; name: string }[] = [
-                      ...captures.map((c) => ({ url: c.url, name: c.name })),
-                      ...localOnly,
-                    ];
-                    if (allImages.length === 0) return null;
+                  {(() => {
+                    const safeCaptures = Array.isArray(captures) ? captures : [];
+
+                    if (currentisLoading) {
+                      return <Typography variant="caption">Loading captures...</Typography>;
+                    }
+                    if (!safeCaptures && !safeCaptures) {
+                      return (
+                        <Typography variant="caption" color="error">
+                          Failed to load captures.
+                        </Typography>
+                      );
+                    }
+
+                    if (safeCaptures.length === 0) return null;
+
                     return (
                       <Box sx={{ border: '1px solid #ccc', px: 1, py: 1, borderRadius: 1 }}>
                         <Typography variant="caption" fontWeight={600} display="block" mb={0.5}>
-                          Captured ({allImages.length})
+                          Captured ({safeCaptures.length})
                           {sessionId && (
                             <Typography
                               component="span"
@@ -692,57 +712,60 @@ export default function CameraCaptureNewEditForm({
                           gap={4}
                           sx={{ overflowY: 'auto', maxHeight: 370, m: 0 }}
                         >
-                          {allImages.map((img, idx) => (
-                            <ImageListItem
-                              key={idx}
-                              sx={{
-                                border: '1px solid #ccc',
-                                borderRadius: 0.5,
-                                overflow: 'hidden',
-                                cursor: 'pointer',
-                              }}
-                              onClick={() => {
-                                const a = document.createElement('a');
-                                a.href = img.url;
-                                a.download = img.name;
-                                document.body.appendChild(a);
-                                a.click();
-                                document.body.removeChild(a);
-                              }}
-                            >
-                              <img
-                                src={img.url}
-                                alt={img.name}
-                                loading="lazy"
-                                style={{
-                                  width: '100%',
-                                  height: 70,
-                                  objectFit: 'cover',
-                                  display: 'block',
-                                }}
-                              />
-                              <Typography
-                                variant="caption"
-                                sx={{
-                                  display: 'block',
-                                  fontSize: 9,
-                                  textAlign: 'center',
-                                  overflow: 'hidden',
-                                  textOverflow: 'ellipsis',
-                                  whiteSpace: 'nowrap',
-                                  px: 0.5,
-                                  lineHeight: '18px',
-                                  background: 'rgba(0,0,0,0.05)',
-                                }}
-                              >
-                                {img.name}
-                              </Typography>
-                            </ImageListItem>
-                          ))}
+                          {safeCaptures
+                            .sort((a, b) => Number(a.id) - Number(b.id))
+                            .map((img, idx) => {
+                              const imageUrl = `${CONFIG.site.serverUrl}/uploads/${img.imagePath}`;
+                              console.log(`Image ${idx}:`, {
+                                id: img.id,
+                                sessionId: img.sessionId,
+                                imagePath: img.imagePath,
+                                capturedAt: img.capturedAt,
+                                url: imageUrl,
+                              });
+
+                              return (
+                                <ImageListItem
+                                  sx={{
+                                    border: '1px solid black',
+                                  }}
+                                >
+                                  <img
+                                    src={`${CONFIG.site.serverUrl}/uploads/${img.imagePath}`}
+                                    alt={img.capturedAt}
+                                    loading="lazy"
+                                    style={{
+                                      width: '100%',
+                                      height: 80,
+                                      objectFit: 'cover',
+                                      display: 'block',
+                                    }}
+                                  />
+                                  <Typography
+                                    variant="caption"
+                                    sx={{
+                                      display: 'block',
+                                      fontSize: 9,
+                                      textAlign: 'center',
+                                      overflow: 'hidden',
+                                      textOverflow: 'ellipsis',
+                                      whiteSpace: 'nowrap',
+                                      px: 0.5,
+                                      lineHeight: '18px',
+                                      background: 'rgba(0,0,0,0.05)',
+                                    }}
+                                  >
+                                    {img.capturedAt
+                                      ? new Date(img.capturedAt).toLocaleString()
+                                      : 'Unknown time'}
+                                  </Typography>
+                                </ImageListItem>
+                              );
+                            })}
                         </ImageList>
                       </Box>
                     );
-                  })()} */}
+                  })()}
                 </Box>
               </Box>
             </Box>
@@ -761,6 +784,7 @@ export default function CameraCaptureNewEditForm({
         handleDisable={handleDisable}
         onSubmit={onSubmit}
         onExit={handleExitHistory}
+        handleCreateReport={handleCreateReport}
       />
       {/* Dialog */}
 

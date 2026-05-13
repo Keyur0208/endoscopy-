@@ -161,8 +161,8 @@ export function EndoscopyReportHeader({
                 }}
               >
                 <RHFFormField
-                  label="Capture Date"
-                  name="captureDate"
+                  label="Report Date"
+                  name="reportDate"
                   isdisable={isdisable}
                   type="date"
                   sx={{

@@ -2,6 +2,7 @@ import { celebrate, Joi, Segments } from 'celebrate';
 
 export const CreateReportTemplateValidator = celebrate({
   [Segments.BODY]: Joi.object({
+    reportTypeId: Joi.number().integer().positive().required(),
     title: Joi.string().trim().min(1).required(),
     code: Joi.string().trim().allow(null, '').optional(),
     maxImages: Joi.number().integer().min(0).optional(),
@@ -23,6 +24,7 @@ export const CreateReportTemplateValidator = celebrate({
 
 export const UpdateReportTemplateValidator = celebrate({
   [Segments.BODY]: Joi.object({
+    reportTypeId: Joi.number().integer().positive().required(),
     title: Joi.string().trim().min(1).optional(),
     code: Joi.string().trim().allow(null, '').optional(),
     maxImages: Joi.number().integer().min(0).optional(),

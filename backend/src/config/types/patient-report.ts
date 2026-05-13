@@ -3,6 +3,9 @@
 // Patient Report Value Types
 // ============================================
 
+import { IReportTemplateRecord } from "./report";
+import { IReportTypeRecord } from "./report-type";
+
 export interface IPatientReportValueRecord {
   id: number;
   reportId: number;
@@ -81,7 +84,11 @@ export interface IUpdatePatientReportImage {
 
 export interface IPatientReportRecord {
   id: number;
+  reportDate: string;
+  entryDate: string;
+  remark: string | null;
   patientId: number;
+  reportTypeId: number | null;
   templateId: number;
   organizationId: number | null;
   branchId: number | null;
@@ -99,6 +106,10 @@ export interface IPatientReportRecord {
 export interface ICreatePatientReport {
   patientId: number;
   templateId: number;
+  reportTypeId?: number | null;
+  reportDate: string;
+  entryDate: string;
+  remark?: string | null;
   organizationId?: number | null;
   branchId?: number | null;
   resourceInfo?: string | null;
@@ -114,6 +125,7 @@ export interface IUpdatePatientReport {
   id?: number;
   patientId?: number;
   templateId?: number;
+  reportTypeId?: number | null;
   organizationId?: number | null;
   branchId?: number | null;
   resourceInfo?: string | null;

@@ -1,31 +1,3 @@
-/**
- * storage.ts
- *
- * File-system helpers for recording sessions.
- *
- * Paths are driven by ConfigurationModule records:
- *   module=recording  subModule=storage  fieldKey=recordings_path  → base recordings folder
- *   module=recording  subModule=storage  fieldKey=backup_path      → backup folder
- *
- * If the configuration is not set the service falls back to ./data/recordings
- * and ./data/recordings_backup respectively.
- *
- * Directory layout for a single session:
- *
- *   {recordingsPath}/{patientId}/{date}/{sessionCode}/
- *     chunks/          – raw video chunks uploaded from the browser
- *     thumbnails/      – per-session thumbnail images
- *     captures/        – still captures (camera snapshots)
- *     final.mp4        – assembled final video
- *     recording.json   – session metadata written during the session
- *
- * Flow:
- *  1. Client calls POST /recordings/start → storageService.ensureSessionDirs()
- *  2. Client streams chunks → storageService.getChunksDir()
- *  3. Client calls POST /recordings/:code/stop → ffmpegService.concatChunks()
- *  4. Client calls POST /recordings/:code/capture → storageService.getCapturesDir()
- */
-
 import fs from 'fs';
 import path from 'path';
 import { prisma } from '../../config/database';
@@ -38,10 +10,6 @@ const DEFAULT_BACKUP_PATH = path.resolve(process.cwd(), 'data', 'recordings_back
 
 // ── Config lookup helpers ─────────────────────────────────────────────────────
 
-/**
- * Look up a single configuration value for the given fieldKey.
- * Scoped to the branch first, then the organisation, then global.
- */
 async function getConfigValue(
     module: string,
     fieldKey: string,
@@ -108,9 +76,13 @@ export async function getBackupPath(
  * Defaults to false (disabled) when no configuration record exists.
  */
 export async function isCameraCaptureEnabled(
+    userType: string,
     branchId?: number | null,
     organizationId?: number | null
 ): Promise<boolean> {
+    if (userType == 'admin') {
+        return true;
+    }
     const value = await getConfigValue(
         MODULE_KEYS.CAMERA_CAPTURE,
         SUBMODULE_KEYS.CAMERA_CAPTURE,
@@ -122,6 +94,23 @@ export async function isCameraCaptureEnabled(
 }
 
 // ── Directory builders ────────────────────────────────────────────────────────
+
+export function getCaptureRelativePath(
+    patientId: string | number,
+    date: string,
+    sessionCode: string,
+    filename: string
+): string {
+    return path
+        .join(
+            String(patientId),
+            date,
+            sessionCode,
+            'captures',
+            filename
+        )
+        .replace(/\\/g, '/');
+}
 
 export function getPatientDir(base: string, patientId: string | number): string {
     return path.join(base, String(patientId));
@@ -180,6 +169,14 @@ export function getThumbnailPath(
 ): string {
     return path.join(getThumbnailsDir(base, patientId, date, sessionCode), 'thumb.jpg');
 }
+
+function getRecordingPath(
+    base: string,
+    patientId: string | number,
+    date: string,
+    sessionCode: string
+): string { return path.join(getSessionDir(base, patientId, date, sessionCode), 'recording.json'); }
+
 
 // ── Directory creation ────────────────────────────────────────────────────────
 
@@ -247,4 +244,28 @@ export async function backupSession(
     const destDir = path.join(backupBase, String(patientId), date, sessionCode);
     await fs.promises.mkdir(path.dirname(destDir), { recursive: true });
     await fs.promises.cp(srcDir, destDir, { recursive: true });
+}
+
+// ── Recording metadata ────────────────────────────────────────────────────────
+export async function readRecordingMeta(
+    base: string,
+    patientId: string | number,
+    date: string,
+    sessionCode: string
+): Promise<Record<string, unknown> | null> {
+    try {
+        return JSON.parse(await fs.promises.readFile(getRecordingPath(base, patientId, date, sessionCode), 'utf8'));
+    } catch {
+        return null;
+    }
+}
+
+export async function writeRecordingMeta(
+    base: string,
+    patientId: string | number,
+    date: string,
+    sessionCode: string,
+    meta: Record<string, unknown>
+): Promise<void> {
+    await fs.promises.writeFile(getRecordingPath(base, patientId, date, sessionCode), JSON.stringify(meta, null, 2), 'utf8');
 }

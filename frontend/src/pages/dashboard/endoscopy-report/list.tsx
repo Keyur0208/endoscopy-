@@ -8,7 +8,7 @@ export default function Page() {
   return (
     <>
       <Helmet>
-        <title> Dashboard: Endoscopy Report List</title>
+        <title> Dashboard: Report List</title>
       </Helmet>
 
       <EndoscopyReportListView />

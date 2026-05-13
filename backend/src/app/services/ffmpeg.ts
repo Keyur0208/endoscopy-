@@ -65,35 +65,71 @@ function spawnFfmpeg(args: string[]): Promise<void> {
  * @param chunkPaths - Absolute paths to source chunks, in order.
  * @param outputPath - Destination for the merged MP4.
  */
-export async function concatChunks(
+export async function mergeChunks(
   chunkPaths: string[],
-  outputPath: string
+  finalPath: string
 ): Promise<void> {
-  if (chunkPaths.length === 0) {
-    throw new Error('concatChunks: no input files provided');
+
+  if (!chunkPaths.length) {
+    throw new Error('No chunks found');
   }
 
-  // Write a temporary concat list file that ffmpeg's concat demuxer needs.
-  const listContent = chunkPaths
-    .map((p) => `file '${p.replace(/'/g, "'\\''")}'`)
-    .join('\n');
+  // Ensure order
+  const sorted = [...chunkPaths].sort();
 
-  const tmpList = path.join(os.tmpdir(), `concat-${Date.now()}.txt`);
-  await fs.promises.writeFile(tmpList, listContent, 'utf8');
+  // Create temporary merged WEBM
+  const sourcePath = finalPath.replace(/\.mp4$/i, '.webm');
 
-  try {
-    await spawnFfmpeg([
-      '-f', 'concat',
-      '-safe', '0',
-      '-i', tmpList,
-      '-c', 'copy',
-      '-movflags', '+faststart',
-      '-y',
-      outputPath,
-    ]);
-  } finally {
-    await fs.promises.unlink(tmpList).catch(() => undefined);
+  // Clear existing
+  await fs.promises.writeFile(
+    sourcePath,
+    Buffer.alloc(0)
+  );
+
+  // Append all chunks
+  for (const chunkPath of sorted) {
+
+    const stat =
+      await fs.promises.stat(chunkPath);
+
+    if (stat.size <= 0) {
+      continue;
+    }
+
+    const data =
+      await fs.promises.readFile(chunkPath);
+
+    await fs.promises.appendFile(
+      sourcePath,
+      data
+    );
   }
+
+  // Convert WEBM -> MP4
+  await spawnFfmpeg([
+    '-i',
+    sourcePath.replace(/\\/g, '/'),
+
+    '-c:v',
+    'libx264',
+
+    '-preset',
+    'veryfast',
+
+    '-pix_fmt',
+    'yuv420p',
+
+    '-movflags',
+    '+faststart',
+
+    '-y',
+
+    finalPath.replace(/\\/g, '/'),
+  ]);
+
+  // Optional cleanup
+  await fs.promises.unlink(sourcePath)
+    .catch(() => undefined);
 }
 
 // ── Thumbnail extraction ──────────────────────────────────────────────────────
@@ -125,7 +161,7 @@ export async function extractThumbnail(
  * Required when the browser sends fMP4 chunks from MediaRecorder.
  */
 export async function normalizeMp4Chunk(chunkPath: string): Promise<void> {
-  const parsed  = path.parse(chunkPath);
+  const parsed = path.parse(chunkPath);
   const tmpPath = path.join(parsed.dir, `${parsed.name}.tmp${parsed.ext}`);
 
   try {

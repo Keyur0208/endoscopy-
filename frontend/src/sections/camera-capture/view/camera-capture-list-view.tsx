@@ -25,7 +25,7 @@ import { useDebouncedSearch } from 'src/hooks/use-debounce';
 
 import { DashboardContent } from 'src/layouts/dashboard';
 import SettingsIcon from 'src/assets/icons/settings-icon';
-import { useGetPatientRegistrations } from 'src/actions/patient-registration';
+import { useGetRecordingSessions } from 'src/actions/camera-capture';
 
 import { Iconify } from 'src/components/iconify';
 import InfoTable from 'src/components/table-body';
@@ -40,7 +40,6 @@ import {
 } from 'src/components/table';
 
 import CameraCaptureTableRow from '../camera-capture-table-row';
-import { useGetRecordingSessions } from 'src/actions/camera-capture';
 
 // ----------------------------------------------------------------------
 

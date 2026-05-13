@@ -13,3 +13,12 @@ export enum RecordingStatus {
     Ready = "READY",
     Error = "ERROR"
 }
+
+export enum InputType {
+    Text = "text",
+    Number = "number",
+    Boolean = "boolean",
+    Date = "date",
+    Time = "time",
+    DateTime = "datetime"
+}

@@ -39,6 +39,9 @@ model AdminUser {
   captureImagesCreated CaptureImage[] @relation("CaptureImageCreatedByAdmin")
   captureImagesUpdated CaptureImage[] @relation("CaptureImageUpdatedByAdmin")
 
+  reportTypesCreated ReportType[] @relation("ReportTypeCreatedByAdmin")
+  reportTypesUpdated ReportType[] @relation("ReportTypeUpdatedByAdmin")
+
   reportTemplatesCreated ReportTemplate[] @relation("ReportTemplateCreatedByAdmin")
   reportTemplatesUpdated ReportTemplate[] @relation("ReportTemplateUpdatedByAdmin")
 
@@ -102,6 +105,7 @@ model Organization {
   configurations     ConfigurationModule[]
   patients           PatientRegistration[]
   recordingSessions  RecordingSession[]
+  reportTypes        ReportType[]
   reportTemplates    ReportTemplate[]
   patientReports     PatientReport[]
   parameterMasters   ParameterMaster[]
@@ -149,6 +153,7 @@ model Branch {
   configurations     ConfigurationModule[]
   patients           PatientRegistration[]
   recordingSessions  RecordingSession[]
+  reportTypes        ReportType[]
   reportTemplates    ReportTemplate[]
   patientReports     PatientReport[]
   parameterMasters   ParameterMaster[]
@@ -202,6 +207,8 @@ model User {
   recordingSessionsUpdated   RecordingSession[]      @relation("RecordingSessionUpdatedByUser")
   captureImagesCreated       CaptureImage[]          @relation("CaptureImageCreatedByUser")
   captureImagesUpdated       CaptureImage[]          @relation("CaptureImageUpdatedByUser")
+  reportTypesCreated         ReportType[]            @relation("ReportTypeCreatedByUser")
+  reportTypesUpdated         ReportType[]            @relation("ReportTypeUpdatedByUser")
   reportTemplatesCreated     ReportTemplate[]        @relation("ReportTemplateCreatedByUser")
   reportTemplatesUpdated     ReportTemplate[]        @relation("ReportTemplateUpdatedByUser")
   parameterMastersCreated    ParameterMaster[]       @relation("ParameterMasterCreatedByUser")
@@ -381,8 +388,38 @@ model CaptureImage {
   @@map("capture_images")
 }
 
+model ReportType {
+  id             Int      @id @default(autoincrement())
+  name           String
+  code           String?  @unique
+  description    String?
+  isActive       Boolean  @default(true) @map("is_active")
+  isDefault      Boolean  @default(false) @map("is_default")
+  organizationId Int?     @map("organization_id")
+  branchId       Int?     @map("branch_id")
+  resourceInfo   String?  @map("resource_info")
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @updatedAt @map("updated_at")
+  createdBy      Int?     @map("created_by")
+  updatedBy      Int?     @map("updated_by")
+  createdByAdmin Int?     @map("created_by_admin")
+  updatedByAdmin Int?     @map("updated_by_admin")
+
+  templates          ReportTemplate[]
+  reports            PatientReport[]
+  branch             Branch?          @relation(fields: [branchId], references: [id])
+  organization       Organization?    @relation(fields: [organizationId], references: [id])
+  createdByAdminUser AdminUser?       @relation("ReportTypeCreatedByAdmin", fields: [createdByAdmin], references: [id])
+  updatedByAdminUser AdminUser?       @relation("ReportTypeUpdatedByAdmin", fields: [updatedByAdmin], references: [id])
+  createdByUser      User?            @relation("ReportTypeCreatedByUser", fields: [createdBy], references: [id])
+  updatedByUser      User?            @relation("ReportTypeUpdatedByUser", fields: [updatedBy], references: [id])
+
+  @@map("report_types")
+}
+
 model ReportTemplate {
   id             Int      @id @default(autoincrement())
+  reportTypeId   Int?     @map("report_type_id")
   title          String
   code           String?  @unique
   maxImages      Int      @default(0)
@@ -397,6 +434,7 @@ model ReportTemplate {
   createdByAdmin Int?     @map("created_by_admin")
   updatedByAdmin Int?     @map("updated_by_admin")
 
+  reportType         ReportType?             @relation(fields: [reportTypeId], references: [id])
   sections           ReportTemplateSection[]
   reports            PatientReport[]
   organization       Organization?           @relation(fields: [organizationId], references: [id])
@@ -464,7 +502,11 @@ model ReportTemplateSection {
 
 model PatientReport {
   id             Int      @id @default(autoincrement())
+  reportDate     DateTime @map("report_date")
+  entryDate      DateTime @map("entry_date")
+  remark         String?
   patientId      Int      @map("patient_id")
+  reportTypeId   Int?     @map("report_type_id")
   templateId     Int      @map("template_id")
   organizationId Int?     @map("organization_id")
   branchId       Int?     @map("branch_id")
@@ -475,16 +517,18 @@ model PatientReport {
   createdByAdmin Int?     @map("created_by_admin")
   updatedByAdmin Int?     @map("updated_by_admin")
 
-  patient            PatientRegistration  @relation(fields: [patientId], references: [id])
-  template           ReportTemplate       @relation(fields: [templateId], references: [id])
-  values             PatientReportValue[]
-  images             PatientReportImage[]
-  organization       Organization?        @relation(fields: [organizationId], references: [id])
-  branch             Branch?              @relation(fields: [branchId], references: [id])
-  createdByUser      User?                @relation("PatientReportCreatedByUser", fields: [createdBy], references: [id])
-  updatedByUser      User?                @relation("PatientReportUpdatedByUser", fields: [updatedBy], references: [id])
-  createdByAdminUser AdminUser?           @relation("PatientReportCreatedByAdmin", fields: [createdByAdmin], references: [id])
-  updatedByAdminUser AdminUser?           @relation("PatientReportUpdatedByAdmin", fields: [updatedByAdmin], references: [id])
+  values PatientReportValue[]
+  images PatientReportImage[]
+
+  patient            PatientRegistration @relation(fields: [patientId], references: [id])
+  template           ReportTemplate      @relation(fields: [templateId], references: [id])
+  reportType         ReportType?         @relation(fields: [reportTypeId], references: [id])
+  organization       Organization?       @relation(fields: [organizationId], references: [id])
+  branch             Branch?             @relation(fields: [branchId], references: [id])
+  createdByUser      User?               @relation("PatientReportCreatedByUser", fields: [createdBy], references: [id])
+  updatedByUser      User?               @relation("PatientReportUpdatedByUser", fields: [updatedBy], references: [id])
+  createdByAdminUser AdminUser?          @relation("PatientReportCreatedByAdmin", fields: [createdByAdmin], references: [id])
+  updatedByAdminUser AdminUser?          @relation("PatientReportUpdatedByAdmin", fields: [updatedByAdmin], references: [id])
 
   @@map("patient_reports")
 }

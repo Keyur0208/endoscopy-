@@ -11,7 +11,7 @@ import { useGetPatientRegistration } from 'src/actions/patient-registration';
 import { EndoscopyReportEditView } from 'src/sections/endoscopy-report/view';
 
 // Metadata
-const metadata = { title: `Endoscopy Report Edits | Dashboard - ${CONFIG.site.name}` };
+const metadata = { title: `Report Edits | Dashboard - ${CONFIG.site.name}` };
 
 export default function Page() {
   const { id } = useParams();

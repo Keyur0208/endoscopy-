@@ -22,9 +22,7 @@ export const findAllParameterMasters = async (
         const perPageNumber = Number(perPage) || 50;
         const skip = (pageNumber - 1) * perPageNumber;
 
-        const baseWhere: Record<string, unknown> = {
-            isActive: true,
-        };
+        const baseWhere: Record<string, unknown> = {};
 
         const where = applyBranchScope(baseWhere, user);
 
@@ -48,7 +46,7 @@ export const findAllParameterMasters = async (
                     updatedByUser: true,
                     createdByAdminUser: true,
                     updatedByAdminUser: true,
-                    branches: true,
+                    // branches: true,
                 },
                 skip,
                 take: perPageNumber,
@@ -186,7 +184,7 @@ export const createParameterMaster = async (
 
         if (existingTemplate) {
             return {
-                status: false,
+                success: false,
                 message: MESSAGES.PARAMETER_MASTER_ALREADY_EXISTS,
             };
         }

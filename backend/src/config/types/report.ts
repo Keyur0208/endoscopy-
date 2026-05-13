@@ -47,6 +47,7 @@ export interface IUpdateReportTemplateSection {
 
 export interface IReportTemplateRecord {
   id: number;
+  reportTypeId: number;
   title: string;
   code: string | null;
   maxImages: number;
@@ -64,6 +65,7 @@ export interface IReportTemplateRecord {
 }
 
 export interface ICreateReportTemplate {
+  reportTypeId: number;
   title: string;
   code?: string | null;
   maxImages?: number;
@@ -80,6 +82,7 @@ export interface ICreateReportTemplate {
 
 export interface IUpdateReportTemplate {
   id?: number;
+  reportTypeId?: number;
   title?: string;
   code?: string | null;
   maxImages?: number;

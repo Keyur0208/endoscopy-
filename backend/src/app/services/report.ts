@@ -21,10 +21,7 @@ export const findAllReportTemplates = async (
         const pageNumber = Number(page) || 1;
         const perPageNumber = Number(perPage) || 50;
         const skip = (pageNumber - 1) * perPageNumber;
-
-        const baseWhere: Record<string, unknown> = {
-            isActive: true,
-        };
+        const baseWhere: Record<string, unknown> = {};
         const where = applyBranchScope(baseWhere, user);
 
         if (searchedValue && searchedValue.trim() !== '') {
@@ -41,7 +38,8 @@ export const findAllReportTemplates = async (
                 },
             ];
         }
-        const [templates, total] = await Promise.all([
+
+        const [templates, total, lastReport] = await Promise.all([
             prisma.reportTemplate.findMany({
                 where,
                 include: {
@@ -57,6 +55,7 @@ export const findAllReportTemplates = async (
                     updatedByUser: true,
                     createdByAdminUser: true,
                     updatedByAdminUser: true,
+                    reportType: true,
                 },
                 skip,
                 take: perPageNumber,
@@ -64,9 +63,15 @@ export const findAllReportTemplates = async (
                     createdAt: 'desc',
                 },
             }),
-
             prisma.reportTemplate.count({ where }),
+            prisma.reportTemplate.findFirst({
+                orderBy: { id: 'desc' },
+                select: { id: true },
+            }),
         ]);
+
+        const lastPage = Math.ceil(total / perPageNumber);
+
 
         return {
             success: true,
@@ -76,7 +81,8 @@ export const findAllReportTemplates = async (
                 currentPage: pageNumber,
                 perPage: perPageNumber,
                 total,
-                lastPage: Math.ceil(total / perPageNumber),
+                lastPage,
+                lastId: lastReport?.id ?? null,
             },
         };
     } catch (error: any) {
@@ -121,6 +127,7 @@ export const findSearchReportTemplates = async (user: AuthenticatedUser, q: stri
                         sequence: 'asc',
                     },
                 },
+                reportType: true,
             }
         });
 
@@ -140,9 +147,10 @@ export const findSearchReportTemplates = async (user: AuthenticatedUser, q: stri
 
 export const findByReportTemplateId = async (id: number) => {
     try {
-        const template = await prisma.reportTemplate.findUnique({
-            where: { id, isActive: true },
+        const baseWhere = { isActive: true };
 
+        const template = await prisma.reportTemplate.findUnique({
+            where: { id, ...baseWhere },
             include: {
                 sections: {
                     include: {
@@ -152,7 +160,7 @@ export const findByReportTemplateId = async (id: number) => {
                         sequence: 'asc',
                     },
                 },
-
+                reportType: true,
                 createdByUser: true,
                 updatedByUser: true,
                 createdByAdminUser: true,
@@ -167,10 +175,32 @@ export const findByReportTemplateId = async (id: number) => {
             };
         }
 
+        const [next, previous, positionResult, totalResult] = await Promise.all([
+            prisma.reportTemplate.findFirst({
+                where: { ...baseWhere, id: { gt: id } },
+                orderBy: { id: 'asc' },
+                select: { id: true },
+            }),
+            prisma.reportTemplate.findFirst({
+                where: { ...baseWhere, id: { lt: id } },
+                orderBy: { id: 'desc' },
+                select: { id: true },
+            }),
+            prisma.reportTemplate.count({ where: { ...baseWhere, id: { lte: id } } }),
+            prisma.reportTemplate.count({ where: baseWhere }),
+        ]);
+
+
         return {
             success: true,
             data: template,
             message: MESSAGES.REPORT_TEMPLATE_FETCHED_SUCCESSFULLY,
+            meta: {
+                position: positionResult,
+                total: totalResult,
+                nextId: next?.id ?? null,
+                prevId: previous?.id ?? null,
+            },
         };
     } catch (error: any) {
         return {
@@ -204,6 +234,7 @@ export const createReportTemplate = async (
 
             const template = await tx.reportTemplate.create({
                 data: {
+                    reportTypeId: payload.reportTypeId,
                     title: payload.title,
                     code: payload.code,
                     maxImages: payload.maxImages,
@@ -269,10 +300,12 @@ export const updateReportTemplate = async (
                 where: { id },
 
                 data: {
+                    reportTypeId: payload.reportTypeId,
                     title: payload.title,
                     code: payload.code,
                     maxImages: payload.maxImages,
                     isActive: payload.isActive,
+                    resourceInfo: payload.resourceInfo ?? null,
                     updatedBy: payload.updatedBy ?? null,
                     updatedByAdmin: payload.updatedByAdmin ?? null,
                 },

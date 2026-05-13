@@ -22,6 +22,7 @@ interface CameraCaptureFormButtonProps {
   handleReport?: () => void;
   handleNext?: () => void;
   handleDisable?: () => void | undefined;
+  handleCreateReport?: () => void | undefined;
 }
 
 const CameraCaptureFormButton: React.FC<CameraCaptureFormButtonProps> = ({
@@ -35,6 +36,7 @@ const CameraCaptureFormButton: React.FC<CameraCaptureFormButtonProps> = ({
   handleNext,
   handleDisable,
   handleReport,
+  handleCreateReport,
   onExit,
 }) => {
   const theme = useTheme();
@@ -198,6 +200,25 @@ const CameraCaptureFormButton: React.FC<CameraCaptureFormButtonProps> = ({
               </Button>
             </Tooltip>
           </Stack>
+        )}
+      </Stack>
+
+      <Stack>
+        {currentData && (
+          <CommonButton
+            variant="contained"
+            sx={{
+              backgroundColor: theme.palette.primary.main,
+              fontSize: isMobile ? '0.8rem' : '13px',
+              width: isMobile ? '100%' : 'auto',
+              '&:hover': {
+                backgroundColor: theme.palette.primary.main,
+              },
+            }}
+            onClick={handleCreateReport}
+          >
+            Create Report
+          </CommonButton>
         )}
       </Stack>
 
