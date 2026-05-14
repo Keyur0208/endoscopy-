@@ -1,11 +1,12 @@
 import type { ICurrentPaginatedResponse } from 'src/types/pagination-fillter';
 
 import EndoscopyReportNewEditForm from '../endoscopy-report-new-edit-form';
+import { IEndoscopyReportRecord } from 'src/types/endoscopy-report';
 
 // ----------------------------------------------------------------------
 
 type Props = {
-  currentData: any | undefined;
+  currentData: IEndoscopyReportRecord | undefined;
   currentMeta: ICurrentPaginatedResponse | undefined;
   currentisLoading: boolean;
 };

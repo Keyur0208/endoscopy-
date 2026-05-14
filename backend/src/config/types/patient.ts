@@ -50,7 +50,7 @@ export interface ICreatePatient {
   branchId?: number | null;
   organizationId?: number | null;
   resourceInfo?: string | null;
-  createdBy?: number | null;
+  createdBy?: number;
   updatedBy?: number | null;
   createdByAdmin?: number | null;
   updatedByAdmin?: number | null;

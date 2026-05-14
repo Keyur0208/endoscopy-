@@ -56,6 +56,7 @@ export const createPatientController = asyncHandler<AuthenticatedRequest>(
             createdByAdmin,
             updatedBy: null,
             updatedByAdmin: null,
+            organizationId: user.organizationId ?? null,
             branchId: user.userType === 'admin' ? (req.body.branchId ?? null) : (auditBranchId ?? null),
         };
 

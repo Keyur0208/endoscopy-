@@ -11,9 +11,9 @@ type YearMonthDayProps = {
 };
 
 const YEAR_MONTH_DAT_OPTAIONS_STRUCTURE = [
-  { label: 'Year', value: 'Year' },
-  { label: 'Month', value: 'Month' },
-  { label: 'Day', value: 'Day' },
+  { label: 'Year', value: 'year' },
+  { label: 'Month', value: 'month' },
+  { label: 'Day', value: 'day' },
 ];
 
 export function YearMonthDayField({

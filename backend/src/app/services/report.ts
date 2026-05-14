@@ -329,7 +329,7 @@ export const updateReportTemplate = async (
                     data: payload.sections.map((section) => ({
                         templateId: id,
                         parameterId: section.parameterId,
-                        sequence: section.sequence,
+                        sequence: section.sequence ?? 0,
                         isRequired: section.isRequired ?? false,
                         branchId: payload.branchId ?? null,
                         organizationId: payload.organizationId ?? null,

@@ -32,7 +32,7 @@ export interface ICreateReportTemplateSection {
 export interface IUpdateReportTemplateSection {
   id?: number;
   templateId?: number;
-  parameterId?: number;
+  parameterId: number;
   sequence?: number;
   isRequired?: boolean;
   createdBy?: number | null;

@@ -32,7 +32,7 @@ export interface ICreatePatientReportValue {
 export interface IUpdatePatientReportValue {
   id?: number;
   reportId?: number;
-  templateSectionId?: number;
+  templateSectionId: number;
   value?: string | null;
   createdBy?: number | null;
   updatedBy?: number | null;

@@ -59,7 +59,7 @@ export const createReportTemplateController =
 export const getReportTemplatesController =
   asyncHandler(async (req: Request, res: Response) => {
     const { page, perPage, searchedValue } = req.query;
-      const user = getRequestUser(req);
+    const user = getRequestUser(req);
 
     const result = await findAllReportTemplates(user, {
       page: page ? Number(page) : undefined,
@@ -72,16 +72,16 @@ export const getReportTemplatesController =
 
 export const getSearchReportTemplatesController =
   asyncHandler(async (req: Request, res: Response) => {
-    const { q , reportTypeId } = req.query;
+    const { q, reportTypeId } = req.query;
     const user = getRequestUser(req);
-    const result = await findSearchReportTemplates(user, q as string , reportTypeId ? Number(reportTypeId) : null);
+    const result = await findSearchReportTemplates(user, q as string, reportTypeId ? Number(reportTypeId) : null);
     res.status(200).json(result);
   });
 
 export const getReportTemplateByIdController =
   asyncHandler(async (req: Request, res: Response) => {
     const id = Number(req.params.id);
-    const result = await findByReportTemplateId( id);
+    const result = await findByReportTemplateId(id);
     res.status(200).json(result);
   });
 

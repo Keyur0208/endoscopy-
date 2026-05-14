@@ -9,6 +9,8 @@ import { CONFIG } from 'src/config-global';
 import { useGetPatientRegistration } from 'src/actions/patient-registration';
 
 import { EndoscopyReportEditView } from 'src/sections/endoscopy-report/view';
+import { useGetEndoscopyReport } from 'src/actions/endoscopy-report';
+import { IEndoscopyReportRecord } from 'src/types/endoscopy-report';
 
 // Metadata
 const metadata = { title: `Report Edits | Dashboard - ${CONFIG.site.name}` };
@@ -16,17 +18,17 @@ const metadata = { title: `Report Edits | Dashboard - ${CONFIG.site.name}` };
 export default function Page() {
   const { id } = useParams();
 
-  const [data, setData] = useState<IPatientRegistrationItem | undefined>(undefined);
+  const [data, setData] = useState<IEndoscopyReportRecord | undefined>(undefined);
 
-  const { patientRegistration, patientRegistrationMeta, isLoading } = useGetPatientRegistration(
+  const { endoscopyReport, endoscopyReportMeta, isLoading } = useGetEndoscopyReport(
     Number(id)
   );
 
   useEffect(() => {
-    if (patientRegistration) {
-      setData(patientRegistration);
+    if (endoscopyReport) {
+      setData(endoscopyReport);
     }
-  }, [patientRegistration]);
+  }, [endoscopyReport]);
 
   return (
     <>
@@ -36,7 +38,7 @@ export default function Page() {
 
       <EndoscopyReportEditView
         currentData={data}
-        currentMeta={patientRegistrationMeta}
+        currentMeta={endoscopyReportMeta}
         currentisLoading={isLoading}
       />
     </>

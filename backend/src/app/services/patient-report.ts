@@ -72,11 +72,7 @@ export const findAllPatientReports = async (
 
           values: {
             include: {
-              templateSection: {
-                include: {
-                  parameter: true,
-                },
-              },
+              templateSection: true,
             },
           },
           images: true,
@@ -195,19 +191,11 @@ export const findPatientReportById = async (id: number) => {
 
         values: {
           include: {
-            templateSection: {
-              include: {
-                parameter: true,
-              },
-            },
-          },
-
-          orderBy: {
-            templateSection: {
-              sequence: 'asc',
-            },
+            templateSection: true,
           },
         },
+
+        reportType: true,
 
         images: true,
 
@@ -294,8 +282,8 @@ export const findPatientReportById = async (id: number) => {
 export const createPatientReport = async (
   payload: ICreatePatientReport
 ) => {
-  return prisma.$transaction(async (tx) => {
-    try {
+  try {
+    return await prisma.$transaction(async (tx) => {
       const template = await tx.reportTemplate.findFirst({
         where: {
           id: payload.templateId,
@@ -315,10 +303,7 @@ export const createPatientReport = async (
       });
 
       if (!template) {
-        return {
-          success: false,
-          message: MESSAGES.REPORT_TEMPLATE_NOT_FOUND,
-        };
+        throw new Error(MESSAGES.REPORT_TEMPLATE_NOT_FOUND);
       }
 
       const patient = await tx.patientRegistration.findFirst({
@@ -329,13 +314,9 @@ export const createPatientReport = async (
       });
 
       if (!patient) {
-        return {
-          success: false,
-          message: MESSAGES.PATIENT_NOT_FOUND,
-        };
+        throw new Error(MESSAGES.PATIENT_NOT_FOUND);
       }
 
-      // Omit values and images from payload to avoid Prisma nested create error
       const { values, images, ...reportData } = payload;
 
       const report = await tx.patientReport.create({
@@ -356,9 +337,9 @@ export const createPatientReport = async (
         },
       });
 
-      if (payload.values?.length) {
-         await tx.patientReportValue.createMany({
-          data: payload.values.map((item) => ({
+      if (values?.length) {
+        await tx.patientReportValue.createMany({
+          data: values.map((item) => ({
             reportId: report.id,
             templateSectionId: item.templateSectionId ?? null,
             value: item.value,
@@ -371,9 +352,9 @@ export const createPatientReport = async (
         });
       }
 
-      if (payload.images?.length) {
+      if (images?.length) {
         await tx.patientReportImage.createMany({
-          data: payload.images.map((item) => ({
+          data: images.map((item) => ({
             reportId: report.id,
             templateSectionId: item.templateSectionId ?? null,
             imagePath: item.imagePath,
@@ -391,14 +372,14 @@ export const createPatientReport = async (
         data: report,
         message: MESSAGES.PATIENT_REPORT_CREATED_SUCCESSFULLY,
       };
-    } catch (error: any) {
-      return {
-        success: false,
-        message: MESSAGES.COMMON_MESSAGES_ERROR,
-        error: error?.message,
-      };
-    }
-  });
+    });
+  } catch (error: any) {
+    return {
+      success: false,
+      message: error?.message || MESSAGES.COMMON_MESSAGES_ERROR,
+      error: error?.message,
+    };
+  }
 };
 
 
@@ -406,8 +387,8 @@ export const updatePatientReport = async (
   id: number,
   payload: IUpdatePatientReport
 ) => {
-  return prisma.$transaction(async (tx) => {
-    try {
+  try {
+    return await prisma.$transaction(async (tx) => {
       const existingReport = await tx.patientReport.findFirst({
         where: {
           id,
@@ -415,10 +396,29 @@ export const updatePatientReport = async (
       });
 
       if (!existingReport) {
-        return {
-          success: false,
-          message: MESSAGES.PATIENT_REPORT_NOT_FOUND,
-        };
+        throw new Error(MESSAGES.PATIENT_REPORT_NOT_FOUND);
+      }
+
+      const patient = await tx.patientRegistration.findFirst({
+        where: {
+          id: payload.patientId,
+          isActive: true,
+        },
+      });
+
+      if (!patient) {
+        throw new Error(MESSAGES.PATIENT_NOT_FOUND);
+      }
+
+      const template = await tx.reportTemplate.findFirst({
+        where: {
+          id: payload.templateId,
+          isActive: true,
+        },
+      });
+
+      if (!template) {
+        throw new Error(MESSAGES.REPORT_TEMPLATE_NOT_FOUND);
       }
 
       await tx.patientReport.update({
@@ -428,6 +428,9 @@ export const updatePatientReport = async (
 
         data: {
           templateId: payload.templateId,
+          reportTypeId: payload.reportTypeId ?? null,
+          reportDate: payload.reportDate,
+          entryDate: payload.entryDate,
           updatedBy: payload.updatedBy ?? null,
           updatedByAdmin: payload.updatedByAdmin ?? null,
           resourceInfo: payload.resourceInfo ?? null,
@@ -447,12 +450,34 @@ export const updatePatientReport = async (
         },
       });
 
+      const validSectionIds = (
+        await tx.reportTemplateSection.findMany({
+          where: {
+            templateId: payload.templateId,
+          },
+
+          select: {
+            id: true,
+          },
+        })
+      ).map((item) => item.id);
+
       if (payload.values?.length) {
+        const invalidValueSection = payload.values.find(
+          (item) =>
+            item.templateSectionId &&
+            !validSectionIds.includes(item.templateSectionId)
+        );
+
+        if (invalidValueSection) {
+          throw new Error('Invalid template section in report values');
+        }
+
         await tx.patientReportValue.createMany({
           data: payload.values.map((item) => ({
             reportId: id,
-            reportDate: payload.reportDate,
-            entryDate: payload.entryDate,
+            // reportDate: payload.reportDate,
+            // entryDate: payload.entryDate,
             reportTypeId: payload.reportTypeId ?? null,
             templateSectionId: item.templateSectionId ?? null,
             value: item.value,
@@ -466,6 +491,16 @@ export const updatePatientReport = async (
       }
 
       if (payload.images?.length) {
+        const invalidImageSection = payload.images.find(
+          (item) =>
+            item.templateSectionId &&
+            !validSectionIds.includes(item.templateSectionId)
+        );
+
+        if (invalidImageSection) {
+          throw new Error('Invalid template section in report images');
+        }
+
         await tx.patientReportImage.createMany({
           data: payload.images.map((item) => ({
             reportId: id,
@@ -475,6 +510,7 @@ export const updatePatientReport = async (
             updatedBy: payload.updatedBy ?? null,
             createdByAdmin: payload.createdByAdmin ?? null,
             updatedByAdmin: payload.updatedByAdmin ?? null,
+            resourceInfo: payload.resourceInfo ?? null,
           })),
         });
       }
@@ -483,14 +519,15 @@ export const updatePatientReport = async (
         success: true,
         message: MESSAGES.PATIENT_REPORT_UPDATED_SUCCESSFULLY,
       };
-    } catch (error: any) {
-      return {
-        success: false,
-        message: MESSAGES.COMMON_MESSAGES_ERROR,
-        error: error?.message,
-      };
-    }
-  });
+    });
+  } catch (error: any) {
+    return {
+      success: false,
+      message: error?.message || MESSAGES.COMMON_MESSAGES_ERROR,
+      error: error?.message,
+    };
+  }
+ 
 };
 
 // ---------------------------------------------------------------------------
