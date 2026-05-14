@@ -88,10 +88,10 @@ app.use('/admin/branches', branchRouter);
 app.use('/configurations', configurationRouter);
 app.use('/patient-registrations', patientRouter);
 app.use('/recordings', recordingRouter);
-app.use('/patient-reports', patientReportRouter);
-app.use('/report-types', reportTypeRouter);
-app.use('/report-templates', reportTemplateRouter);
 app.use('/parameter-masters', parameterMasterRouter);
+app.use('/report-templates', reportTemplateRouter);
+app.use('/report-types', reportTypeRouter);
+app.use('/patient-reports', patientReportRouter);
 
 app.use(celebrateErrors());
 app.use(notFoundHandler);

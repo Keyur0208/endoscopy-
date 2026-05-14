@@ -72,9 +72,9 @@ export const getReportTemplatesController =
 
 export const getSearchReportTemplatesController =
   asyncHandler(async (req: Request, res: Response) => {
-    const { q } = req.query;
+    const { q , reportTypeId } = req.query;
     const user = getRequestUser(req);
-    const result = await findSearchReportTemplates(user, q as string);
+    const result = await findSearchReportTemplates(user, q as string , reportTypeId ? Number(reportTypeId) : null);
     res.status(200).json(result);
   });
 

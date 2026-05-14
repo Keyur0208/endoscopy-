@@ -21,13 +21,13 @@ export type ICreateEndoscopyReportValueRecord = {
 
 export interface IEndoscopyReportImageRecord {
   id?: number;
-  templateSectionId?: number;
+  templateSectionId?: number | null;
   templateSection?: IReportTemplateSectionRecord | null;
   imagePath?: string;
 }
 
 export type ICreateEndoscopyReportImageRecord = {
-  templateSectionId: number;
+  templateSectionId: number | null;
   templateSection?: IReportTemplateSectionRecord | null;
   imagePath: string;
 };
@@ -44,7 +44,7 @@ export interface IEndoscopyReportRecord {
   template?: IReportTemplateRecord | null;
   reportDate?: string | null;
   entryDate?: string | null;
-  remarks?: string | null;
+  remark?: string | null;
   values?: IEndoscopyReportValueRecord[];
   images?: IEndoscopyReportImageRecord[];
   createdByAdminUser?: IUserItem;
@@ -61,7 +61,7 @@ export interface ICreateEndoscopyReport {
   templateId?: number | null;
   reportDate?: string | null;
   entryDate?: string | null;
-  remarks?: string | null;
+  remark?: string | null;
   values?: ICreateEndoscopyReportValueRecord[];
   images?: ICreateEndoscopyReportImageRecord[];
 }
@@ -73,7 +73,7 @@ export interface IUpdateEndoscopyReport {
   templateId?: number | null;
   reportDate?: string | null;
   entryDate?: string | null;
-  remarks?: string | null;
+  remark?: string | null;
   values?: ICreateEndoscopyReportValueRecord[];
   images?: ICreateEndoscopyReportImageRecord[];
 }

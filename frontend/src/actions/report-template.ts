@@ -51,9 +51,14 @@ export function useGetReportTemplates(params: IPaginationFilter) {
   );
 }
 
-export function useSearchReportTemplates(search: string) {
+export function useSearchReportTemplates(search: string,reportTypeId?: number | null) {
   const queryParams = new URLSearchParams();
+  
   queryParams.append('q', search);
+
+  if (reportTypeId !== undefined && reportTypeId !== null) {
+    queryParams.append('reportTypeId', reportTypeId.toString());
+  }
   const url = `${endpoints.reportTemplate.search}?${queryParams.toString()}`;
 
   const { data, isLoading, error } = useSWR<{ data: IReportTemplateRecord[] }>(

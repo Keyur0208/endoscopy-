@@ -135,10 +135,10 @@ export const endpoints = {
     search: '/report-types/search',
   },
   endoscopyReport: {
-    getAll: '/report-types',
-    create: '/report-types',
-    update: (id: number) => `/report-types/${id}`,
-    delete: (id: number) => `/report-types/${id}`,
-    getById: (id: number) => `/report-types/${id}`,
+    getAll: '/patient-reports',
+    create: '/patient-reports',
+    update: (id: number) => `/patient-reports/${id}`,
+    delete: (id: number) => `/patient-reports/${id}`,
+    getById: (id: number) => `/patient-reports/${id}`,
   },
 };

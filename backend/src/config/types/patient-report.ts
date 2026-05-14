@@ -126,6 +126,8 @@ export interface IUpdatePatientReport {
   patientId?: number;
   templateId?: number;
   reportTypeId?: number | null;
+  reportDate: string;
+  entryDate: string;
   organizationId?: number | null;
   branchId?: number | null;
   resourceInfo?: string | null;

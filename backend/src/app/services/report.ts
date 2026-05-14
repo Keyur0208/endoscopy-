@@ -94,7 +94,7 @@ export const findAllReportTemplates = async (
     }
 };
 
-export const findSearchReportTemplates = async (user: AuthenticatedUser, q: string) => {
+export const findSearchReportTemplates = async (user: AuthenticatedUser, q: string , reportTypeId: number | null) => {
     try {
         const where: Record<string, unknown> = {
             isActive: true,
@@ -116,6 +116,13 @@ export const findSearchReportTemplates = async (user: AuthenticatedUser, q: stri
                 },
             ];
         }
+
+        if (reportTypeId !== null) {
+            where.reportTypeId = reportTypeId;
+        }
+
+        console.log('Search where clause:', where);
+
         const templates = await prisma.reportTemplate.findMany({
             where,
             include: {

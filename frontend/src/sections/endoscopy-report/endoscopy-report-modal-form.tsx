@@ -1,7 +1,6 @@
-
-import { useState } from 'react';
-
-import { Box ,
+import { useState, useEffect, useCallback } from 'react';
+import {
+  Box,
   Dialog,
   useTheme,
   Checkbox,
@@ -11,72 +10,100 @@ import { Box ,
   ImageListItem,
   DialogContent,
 } from '@mui/material';
-
 import { useBoolean } from 'src/hooks/use-boolean';
-
 import { CONFIG } from 'src/config-global';
-
 import { Iconify } from 'src/components/iconify';
-import { useTimezone } from 'src/components/time-zone';
 import CommonButton from 'src/components/common-button';
+import { usePopover, CustomPopover } from 'src/components/custom-popover';
 
-type Props = {
+// Define a type for images
+export interface EndoscopyReportImageItem {
+  imagePath: string;
+  capturedAt?: string;
+  templateSectionId?: number | null;
+}
+
+interface Props {
   isDisable?: boolean;
-  captureImages?: any;
-  myImages?: any;
-};
+  captureImages?: EndoscopyReportImageItem[];
+  watchTemplateId?: number | null;
+  myImages?: EndoscopyReportImageItem[];
+  onAddImages?: (params: { imagePath: string }[]) => void;
+}
 
-export default function EndoScopyReportImage({ isDisable, captureImages, myImages }: Props) {
-  const { value, onTrue, onFalse } = useBoolean(false);
-  const [selectedImages, setSelectedImages] = useState<any[]>([]);
-  const [savedImages, setSavedImages] = useState<any[]>(myImages || []);
+export default function EndoScopyReportImage({
+  isDisable,
+  captureImages = [],
+  myImages = [],
+  onAddImages,
+}: Props) {
+  const { value: dialogOpen, onTrue: openDialog, onFalse: closeDialog } = useBoolean(false);
+  const [selectedImages, setSelectedImages] = useState<EndoscopyReportImageItem[]>([]);
+  const [savedImages, setSavedImages] = useState<EndoscopyReportImageItem[]>(myImages);
   const theme = useTheme();
-  const { formatPlainDateTimeToDisplayDateTime } = useTimezone();
+  const popover = usePopover();
 
-  console.log('Received captureImages prop:', captureImages);
+  useEffect(() => {
+    setSavedImages(myImages);
+  }, [myImages]);
 
-  const handleSelectImage = (capture: any) => {
-    const exists = selectedImages.find((img) => img.imagePath === capture.imagePath);
+  // Handle selection in dialog
+  const handleSelectImage = useCallback(
+    (capture: EndoscopyReportImageItem) => {
+      const exists = selectedImages.some((img) => img.imagePath === capture.imagePath);
+      let newSelected: EndoscopyReportImageItem[];
+      if (exists) {
+        newSelected = selectedImages.filter((img) => img.imagePath !== capture.imagePath);
+        setSelectedImages(newSelected);
+        onAddImages &&
+          onAddImages(
+            newSelected.map((img) => ({ imagePath: img.imagePath }))
+          );
+      } else {
+        newSelected = [...selectedImages, capture];
+        setSelectedImages(newSelected);
+        onAddImages &&
+          onAddImages(
+            newSelected.map((img) => ({ imagePath: img.imagePath }))
+          );
+      }
+      setSelectedImages(newSelected);
+    },
+    [selectedImages]
+  );
 
-    if (exists) {
-      setSelectedImages((prev) => prev.filter((img) => img.imagePath !== capture.imagePath));
-    } else {
-      setSelectedImages((prev) => [...prev, capture]);
-    }
-  };
+  // Remove image from saved list
+  const handleRemoveImage = useCallback(
+    (imagePath: string) => {
+      const updated = savedImages.filter((img) => img.imagePath !== imagePath);
+      setSavedImages(updated);
+      onAddImages &&
+        onAddImages(updated.map((img) => ({ imagePath: img.imagePath })));
+    },
+    [savedImages, onAddImages]
+  );
 
-  const handleSaveImages = () => {
-    setSavedImages(selectedImages);
-    onFalse();
-  };
-
-  const handleRemoveImage = (imagePath: string) => {
-    setSavedImages((prev) => prev.filter((img) => img.imagePath !== imagePath));
-  };
-
-  const handleClearAll = () => {
+  // Clear all images
+  const handleClearAll = useCallback(() => {
     setSavedImages([]);
-  };
+    setSelectedImages([]);
+    onAddImages && onAddImages([]);
+  }, [onAddImages]);
+
+  // When dialog opens, pre-select already saved images
+  useEffect(() => {
+    if (dialogOpen) {
+      setSelectedImages(savedImages);
+    }
+  }, [dialogOpen, savedImages]);
 
   return (
     <>
-      <Box
-        sx={{
-          backgroundColor: 'rgba(217, 217, 217, 0.5)',
-          padding: 1,
-        }}
-      >
-        <Box
-          sx={{
-            display: 'flex',
-            justifyContent: 'space-between',
-            alignItems: 'center',
-            mb: 1,
-          }}
-        >
+      <Box sx={{ backgroundColor: 'rgba(217, 217, 217, 0.5)', padding: 1 }}>
+        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
           <Box>
             <Typography variant="subtitle2" sx={{ fontSize: '14px', fontWeight: 600 }}>
-              Selected Images : {savedImages?.length || 0}
+              Selected Images : {savedImages.length}
             </Typography>
           </Box>
           <Box>
@@ -87,34 +114,41 @@ export default function EndoScopyReportImage({ isDisable, captureImages, myImage
                 fontSize: '13px',
                 width: 'auto',
                 height: '28px',
-                '&:hover': {
-                  backgroundColor: 'rgba(63, 84, 115, 1)',
-                },
+                '&:hover': { backgroundColor: 'rgba(63, 84, 115, 1)' },
               }}
-              onClick={onTrue}
+              // onClick={openDialog}
+              onClick={popover.onOpen}
+              disabled={isDisable}
             >
               Select Img
             </CommonButton>
+            <CommonButton
+              variant="outlined"
+              sx={{
+                ml: 1,
+                fontSize: '13px',
+                width: 'auto',
+                height: '28px',
+              }}
+              onClick={handleClearAll}
+              disabled={isDisable || savedImages.length === 0}
+            >
+              Clear All
+            </CommonButton>
           </Box>
         </Box>
-        <Box
-          sx={{
-            border: '2px solid black',
-            p: 1,
-            backgroundColor: '#fff',
-          }}
-        >
+        <Box sx={{ border: '2px solid black', p: 1, backgroundColor: '#fff' }}>
           <ImageList cols={3} gap={4} sx={{ overflowY: 'auto', maxHeight: 370, m: 0 }}>
-            {myImages &&
-              myImages.length > 0 &&
-              myImages.map((capture: any, index: number) => (
+            {savedImages.length > 0 ? (
+              savedImages.map((capture, index) => (
                 <ImageListItem
-                  key={index}
+                  key={capture.imagePath}
                   sx={{
                     border: '1px solid #ccc',
                     borderRadius: 0.5,
                     overflow: 'hidden',
                     cursor: 'pointer',
+                    position: 'relative',
                   }}
                 >
                   <Box
@@ -138,15 +172,10 @@ export default function EndoScopyReportImage({ isDisable, captureImages, myImage
                     <Iconify icon="eva:close-fill" width={16} height={16} />
                   </Box>
                   <img
-                    src={`${CONFIG.site.serverUrl}/uploads/${capture?.imagePath}`}
+                    src={`${CONFIG.site.serverUrl}/uploads/${capture.imagePath}`}
                     alt={`Report Image ${index + 1}`}
                     loading="lazy"
-                    style={{
-                      width: '100%',
-                      height: 70,
-                      objectFit: 'cover',
-                      display: 'block',
-                    }}
+                    style={{ width: '100%', height: 70, objectFit: 'cover', display: 'block' }}
                   />
                   <Typography
                     variant="caption"
@@ -162,17 +191,20 @@ export default function EndoScopyReportImage({ isDisable, captureImages, myImage
                       background: 'rgba(0,0,0,0.05)',
                     }}
                   >
-                    {capture?.capturedAt
-                      ? formatPlainDateTimeToDisplayDateTime(capture.capturedAt)
-                      : 'Unknown time'}
+                    Image {index + 1}
                   </Typography>
                 </ImageListItem>
-              ))}
+              ))
+            ) : (
+              <Typography variant="body2" sx={{  width: '100%' }}>
+                No images selected.
+              </Typography>
+            )}
           </ImageList>
         </Box>
       </Box>
 
-      <Dialog open={value} onClose={onFalse} fullWidth maxWidth="md">
+      <Dialog open={dialogOpen} onClose={closeDialog} fullWidth maxWidth="md">
         <DialogTitle
           id="indoor-registarion-relative-form-title"
           sx={{
@@ -192,34 +224,45 @@ export default function EndoScopyReportImage({ isDisable, captureImages, myImage
             sx={{
               width: '100%',
               display: 'flex',
-              justifyContent: 'center',
+              justifyContent: 'space-between',
               alignItems: 'center',
               position: 'relative',
             }}
           >
+            <Box />
             <Typography
               variant="h4"
-              sx={{
-                color: theme.palette.primary.main,
-                fontWeight: 600,
-                whiteSpace: 'nowrap',
-              }}
+              sx={{ color: theme.palette.primary.main, fontWeight: 600, whiteSpace: 'nowrap' }}
             >
               Select Images
             </Typography>
+            <Box>
+              <Iconify
+                onClick={closeDialog}
+                icon="eva:close-circle-fill"
+                color="black"
+                style={{
+                  cursor: 'pointer',
+                  height: '30px',
+                  width: '30px',
+                  position: 'absolute',
+                  right: 10,
+                  top: 10,
+                }}
+              />
+            </Box>
           </Box>
         </DialogTitle>
-
         <DialogContent>
           <Box paddingY={2}>
             <ImageList cols={3} gap={4} sx={{ overflowY: 'auto', maxHeight: 370, m: 0 }}>
               {captureImages && captureImages.length > 0 ? (
                 captureImages.map((capture, index) => (
                   <ImageListItem
-                    key={index}
+                    key={capture.imagePath}
                     onClick={() => handleSelectImage(capture)}
                     sx={{
-                      border: selectedImages.find((img) => img.imagePath === capture.imagePath)
+                      border: selectedImages.some((img) => img.imagePath === capture.imagePath)
                         ? '3px solid #1976d2'
                         : '1px solid #ccc',
                       borderRadius: 1,
@@ -240,20 +283,14 @@ export default function EndoScopyReportImage({ isDisable, captureImages, myImage
                       }}
                     >
                       <Checkbox
-                        checked={
-                          !!selectedImages.find((img) => img.imagePath === capture.imagePath)
-                        }
+                        checked={selectedImages.some((img) => img.imagePath === capture.imagePath)}
+                        readOnly
                       />
                     </Box>
-
                     <img
-                      src={`${CONFIG.site.serverUrl}/uploads/${capture?.imagePath}`}
+                      src={`${CONFIG.site.serverUrl}/uploads/${capture.imagePath}`}
                       alt="Report"
-                      style={{
-                        width: '100%',
-                        height: 120,
-                        objectFit: 'cover',
-                      }}
+                      style={{ width: '100%', height: 120, objectFit: 'cover' }}
                     />
                   </ImageListItem>
                 ))
@@ -266,6 +303,61 @@ export default function EndoScopyReportImage({ isDisable, captureImages, myImage
           </Box>
         </DialogContent>
       </Dialog>
+
+      <CustomPopover
+        open={popover.open}
+        anchorEl={popover.anchorEl}
+        onClose={popover.onClose}
+        slotProps={{ arrow: { placement: 'right-top' } }}
+      >
+        <Box paddingY={2}>
+          <ImageList cols={3} gap={4} sx={{ overflowY: 'auto', maxHeight: 370, m: 0 }}>
+            {captureImages && captureImages.length > 0 ? (
+              captureImages.map((capture, index) => (
+                <ImageListItem
+                  key={capture.imagePath}
+                  onClick={() => handleSelectImage(capture)}
+                  sx={{
+                    border: selectedImages.some((img) => img.imagePath === capture.imagePath)
+                      ? '3px solid #1976d2'
+                      : '1px solid #ccc',
+                    borderRadius: 1,
+                    overflow: 'hidden',
+                    cursor: 'pointer',
+                    position: 'relative',
+                    transition: '0.2s',
+                  }}
+                >
+                  <Box
+                    sx={{
+                      position: 'absolute',
+                      top: 5,
+                      right: 5,
+                      zIndex: 10,
+                      background: '#fff',
+                      borderRadius: '50%',
+                    }}
+                  >
+                    <Checkbox
+                      checked={selectedImages.some((img) => img.imagePath === capture.imagePath)}
+                      readOnly
+                    />
+                  </Box>
+                  <img
+                    src={`${CONFIG.site.serverUrl}/uploads/${capture.imagePath}`}
+                    alt="Report"
+                    style={{ width: '100%', height: 120, objectFit: 'cover' }}
+                  />
+                </ImageListItem>
+              ))
+            ) : (
+              <Typography variant="body2" sx={{ textAlign: 'center', width: '100%', mt: 4 }}>
+                No images available for this session.
+              </Typography>
+            )}
+          </ImageList>
+        </Box>
+      </CustomPopover>
     </>
   );
 }

@@ -335,9 +335,16 @@ export const createPatientReport = async (
         };
       }
 
+      // Omit values and images from payload to avoid Prisma nested create error
+      const { values, images, ...reportData } = payload;
+
       const report = await tx.patientReport.create({
         data: {
+          ...reportData,
           patientId: payload.patientId,
+          reportDate: payload.reportDate,
+          entryDate: payload.entryDate,
+          reportTypeId: payload.reportTypeId ?? null,
           templateId: payload.templateId,
           organizationId: payload.organizationId ?? null,
           branchId: payload.branchId ?? null,
@@ -350,16 +357,16 @@ export const createPatientReport = async (
       });
 
       if (payload.values?.length) {
-        await tx.patientReportValue.createMany({
+         await tx.patientReportValue.createMany({
           data: payload.values.map((item) => ({
             reportId: report.id,
-            templateSectionId: item.templateSectionId,
+            templateSectionId: item.templateSectionId ?? null,
             value: item.value,
-
             createdBy: payload.createdBy ?? null,
             updatedBy: payload.updatedBy ?? null,
             createdByAdmin: payload.createdByAdmin ?? null,
             updatedByAdmin: payload.updatedByAdmin ?? null,
+            resourceInfo: payload.resourceInfo ?? null,
           })),
         });
       }
@@ -370,11 +377,11 @@ export const createPatientReport = async (
             reportId: report.id,
             templateSectionId: item.templateSectionId ?? null,
             imagePath: item.imagePath,
-
             createdBy: payload.createdBy ?? null,
             updatedBy: payload.updatedBy ?? null,
             createdByAdmin: payload.createdByAdmin ?? null,
             updatedByAdmin: payload.updatedByAdmin ?? null,
+            resourceInfo: payload.resourceInfo ?? null,
           })),
         });
       }
@@ -444,12 +451,16 @@ export const updatePatientReport = async (
         await tx.patientReportValue.createMany({
           data: payload.values.map((item) => ({
             reportId: id,
-            templateSectionId: item.templateSectionId,
+            reportDate: payload.reportDate,
+            entryDate: payload.entryDate,
+            reportTypeId: payload.reportTypeId ?? null,
+            templateSectionId: item.templateSectionId ?? null,
             value: item.value,
             createdBy: payload.createdBy ?? null,
             updatedBy: payload.updatedBy ?? null,
             createdByAdmin: payload.createdByAdmin ?? null,
             updatedByAdmin: payload.updatedByAdmin ?? null,
+            resourceInfo: payload.resourceInfo ?? null,
           })),
         });
       }

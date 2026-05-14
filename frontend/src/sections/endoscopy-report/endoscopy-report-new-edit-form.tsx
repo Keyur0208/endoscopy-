@@ -45,7 +45,7 @@ import {
 } from 'src/actions/endoscopy-report';
 import { useGetPatientRegistration } from 'src/actions/patient-registration';
 import { EndoScopyReportValidator } from 'src/validator/endoscopy-report-validator';
-import EndoScopyReportImage from './endoscopy-report-modal-form';
+import EndoScopyReportImage, { EndoscopyReportImageItem } from './endoscopy-report-modal-form';
 import { useGetCameraCaptureById, useGetCaptures } from 'src/actions/camera-capture';
 
 type Props = {
@@ -108,15 +108,15 @@ export default function EndoscopyReportNewEditForm({
   const checkSessionId = sessionIdFromQuery || null;
   const { patientRegistration } = useGetPatientRegistration(checkPatientId);
 
-   const { captures } = useGetCaptures(checkSessionId);
-  
-  const [ Captureimages , setCaptureImages ] = useState<any[]>(captures || []);
+  const { captures } = useGetCaptures(checkSessionId);
 
-  console.log('Captures for current session:', Captureimages);
+  const [Captureimages, setCaptureImages] = useState<EndoscopyReportImageItem[]>(
+    Array.isArray(captures) ? captures : []
+  );
 
   const defaultValues = useMemo(
     () => ({
-      patientId: currentData?.patientId || patientIdFromQuery || null,
+      patientId: currentData?.patientId || patientIdFromQuery || 0,
       recordId: currentData?.id ? currentData.id.toString() : '',
       uhid: patientRegistration?.uhid || '-',
       patientName:
@@ -126,13 +126,15 @@ export default function EndoscopyReportNewEditForm({
       sex: patientRegistration?.sex || '',
       hospitalDoctor: `${patientRegistration?.hospitalDoctor || ''}`,
       refDrName: `${patientRegistration?.referenceDoctor || ''}`,
-      remarks: currentData?.remarks || '',
+      remark: currentData?.remark || '',
       reportDate: currentData?.reportDate
         ? formatPlainToInputDate(currentData.reportDate)
         : currentDate(),
       entryDate: currentData?.entryDate
         ? formatPlainToInputDate(currentData.entryDate)
         : currentDate(),
+      reportTypeId: currentData?.reportTypeId || 0,
+      templateId: currentData?.templateId || 0,
       values:
         currentData?.values?.map((val) => ({
           templateSectionId: val.templateSectionId,
@@ -161,38 +163,54 @@ export default function EndoscopyReportNewEditForm({
   } = methods;
 
   const watchImages = watch('images') || [];
+  const watchTemplateId = watch('templateId');
+  const watchReportTypeId = watch('reportTypeId');
 
   useEffect(() => {
     reset(defaultValues);
-    setCaptureImages(captures)
-  }, [defaultValues, reset, currentData]);
+    setCaptureImages(Array.isArray(captures) ? captures : []);
+  }, [defaultValues, reset, currentData, captures]);
 
   // Report Template
   const reportTemplateSearch = useDebouncedSearch();
   const { searchReportTemplates } = useSearchReportTemplates(
-    reportTemplateSearch.debouncedQuery || ''
+    reportTemplateSearch.debouncedQuery || '',
+    watchReportTypeId || null
   );
 
   // Report Type
   const reportTypeSearch = useDebouncedSearch();
   const { searchReportTypes } = useSearchReportTypes(reportTypeSearch.debouncedQuery || '');
 
-  const onSubmit = handleSubmit(async (data) => {
-    try {
-      const endoScopyReportId = currentData?.id;
-      if (endoScopyReportId) {
-        await updateEndoscopyReport(currentData?.id, data as IUpdateEndoscopyReport);
-      } else {
-        const res = await createEndoscopyReport(data);
-        if (!res?.id) throw new Error('Endoscopy Report Create Time Error');
-        router.push(paths.dashboard.endoscopyReport.edit(Number(res?.id)));
+  const onSubmit = handleSubmit(
+    async (data) => {
+      try {
+        const endoScopyReportId = currentData?.id;
+
+        const payload = {
+          ...data,
+          values: data.values?.map((val) => ({
+            ...val,
+            templateSectionId: watchTemplateId,
+          })),
+        };
+        if (endoScopyReportId) {
+          await updateEndoscopyReport(currentData?.id, payload as IUpdateEndoscopyReport);
+        } else {
+          const res = await createEndoscopyReport(payload as ICreateEndoscopyReport);
+          if (!res?.id) throw new Error('Endoscopy Report Create Time Error');
+          router.push(paths.dashboard.endoscopyReport.edit(Number(res?.id)));
+        }
+        onhandledisableField();
+        await mutate(`${endpoints.endoscopyReport.getAll}?searchFor=all&page=1&perPage=50`);
+      } catch (error) {
+        console.error('Error:', error);
       }
-      onhandledisableField();
-      await mutate(`${endpoints.endoscopyReport.getAll}?searchFor=all&page=1&perPage=50`);
-    } catch (error) {
-      console.error('Error:', error);
+    },
+    (errors) => {
+      console.error('Validation Errors:', errors);
     }
-  });
+  );
 
   const handleExit = () => {
     router.push(paths.dashboard.root);
@@ -346,7 +364,7 @@ export default function EndoscopyReportNewEditForm({
                 <Box gridColumn="span 4">
                   <RHFFormField
                     label="Remarks"
-                    name="remarks"
+                    name="remark"
                     BoxSx={{
                       textAlign: 'start',
                       '& .MuiOutlinedInput-root': {
@@ -371,14 +389,25 @@ export default function EndoscopyReportNewEditForm({
                 >
                   <Box>
                     <MasterAutoCompleteV2
-                      name="reportTemplateId"
+                      name="reportTypeId"
                       label="Report Type :- "
                       noOptionsText="No Report Template"
                       options={searchReportTypes}
                       getOptionLabel={(option) => option.name}
                       getOptionValue={(option) => option.id}
+                      currentData={currentData}
+                      currentLabel={currentData?.reportType?.name || ''}
+                      currentValue={currentData?.reportType?.id || null}
                       searchValue={reportTypeSearch.query}
                       onSearch={(value) => reportTypeSearch.setQuery(value)}
+                      onSelectOption={(opation) => {
+                        if (opation?.original) {
+                          setValue('reportTypeId', opation?.original?.id);
+                        } else if (opation === null) {
+                          reset(defaultValues);
+                          setSection([]);
+                        }
+                      }}
                       BoxSx={{
                         display: {
                           xs: 'block',
@@ -413,14 +442,18 @@ export default function EndoscopyReportNewEditForm({
                   </Box>
                   <Box mt={1}>
                     <MasterAutoCompleteV2
-                      name="reportTemplateId"
+                      name="templateId"
                       label="Report Heading :- "
                       noOptionsText="No Report Template"
+                      isDisable={!watchReportTypeId}
                       options={searchReportTemplates}
                       getOptionLabel={(option) => option.title}
                       getOptionValue={(option) => option.id}
                       searchValue={reportTemplateSearch.query}
                       onSearch={(value) => reportTemplateSearch.setQuery(value)}
+                      currentData={currentData}
+                      currentLabel={currentData?.template?.title || ''}
+                      currentValue={currentData?.template?.id || null}
                       BoxSx={{
                         display: {
                           xs: 'block',
@@ -475,9 +508,47 @@ export default function EndoscopyReportNewEditForm({
                           );
                         }
 
+                        const fieldIndex = section
+                          ?.filter((s) => !s?.parameter?.isHeading)
+                          ?.findIndex((s) => s.id === sec.id);
+
                         return (
                           <Box sx={{ mt: 0.5, mb: 0.5 }}>
-                            <AutoCompleteFieldV2
+                            <RHFFormField
+                              key={index}
+                              label={`${sec?.parameter?.name} :-` || '-'}
+                              name={`values.${fieldIndex}.value`}
+                              isdisable={!watchTemplateId}
+                              BoxSx={{
+                                display: {
+                                  xs: 'block',
+                                  md: 'grid',
+                                },
+                                alignItems: 'center',
+                                gridTemplateColumns: {
+                                  xs: '1fr 2fr',
+                                  md: '130px 2fr',
+                                },
+                                columnGap: 1,
+                              }}
+                              InputSx={{
+                                '& .MuiOutlinedInput-root': {
+                                  borderRadius: '2px',
+                                  height: '28px',
+                                  backgroundColor: '#fff',
+                                  color: 'black',
+                                },
+                                '& .MuiInputBase-input': {
+                                  color: 'black',
+                                  fontSize: '13px',
+                                },
+                              }}
+                              labelSx={{
+                                textAlign: 'right',
+                                color: 'black',
+                              }}
+                            />
+                            {/* <AutoCompleteFieldV2
                               key={index}
                               label={`${sec?.parameter?.name} :-` || '-'}
                               name={`title_${sec.id}`}
@@ -515,7 +586,7 @@ export default function EndoscopyReportNewEditForm({
                                   fontSize: '13px',
                                 },
                               }}
-                            />
+                            /> */}
                           </Box>
                         );
                       })}
@@ -524,9 +595,19 @@ export default function EndoscopyReportNewEditForm({
               </Grid>
               <Grid item xs={12} sm={12} md={0.5} />
               <Grid item xs={12} sm={12} md={5.5}>
-                <EndoScopyReportImage 
-                myImages={watchImages}
-                captureImages={Captureimages}
+                <EndoScopyReportImage
+                  myImages={watchImages as EndoscopyReportImageItem[]}
+                  captureImages={Captureimages}
+                  onAddImages={(params: { imagePath: string }[]) =>
+                    setValue(
+                      'images',
+                      params.map((p) => ({
+                        templateSectionId: watchTemplateId ? Number(watchTemplateId) : null,
+                        imagePath: p.imagePath,
+                      })),
+                      { shouldDirty: true }
+                    )
+                  }
                 />
               </Grid>
             </Grid>

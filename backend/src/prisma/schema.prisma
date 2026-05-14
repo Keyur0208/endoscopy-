@@ -487,6 +487,7 @@ model ReportTemplateSection {
   updatedBy      Int?     @map("updated_by")
   createdByAdmin Int?     @map("created_by_admin")
   updatedByAdmin Int?     @map("updated_by_admin")
+  resourceInfo   String?  @map("resource_info")
 
   template           ReportTemplate       @relation(fields: [templateId], references: [id])
   parameter          ParameterMaster      @relation(fields: [parameterId], references: [id])
@@ -516,6 +517,7 @@ model PatientReport {
   updatedBy      Int?     @map("updated_by")
   createdByAdmin Int?     @map("created_by_admin")
   updatedByAdmin Int?     @map("updated_by_admin")
+  resourceInfo   String?  @map("resource_info")
 
   values PatientReportValue[]
   images PatientReportImage[]
@@ -544,6 +546,7 @@ model PatientReportValue {
   updatedBy         Int?     @map("updated_by")
   createdByAdmin    Int?     @map("created_by_admin")
   updatedByAdmin    Int?     @map("updated_by_admin")
+  resourceInfo      String?  @map("resource_info")
 
   report             PatientReport         @relation(fields: [reportId], references: [id])
   templateSection    ReportTemplateSection @relation(fields: [templateSectionId], references: [id])
@@ -566,6 +569,7 @@ model PatientReportImage {
   updatedBy         Int?     @map("updated_by")
   createdByAdmin    Int?     @map("created_by_admin")
   updatedByAdmin    Int?     @map("updated_by_admin")
+  resourceInfo      String?  @map("resource_info")
 
   report             PatientReport          @relation(fields: [reportId], references: [id])
   templateSection    ReportTemplateSection? @relation(fields: [templateSectionId], references: [id])

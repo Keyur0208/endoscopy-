@@ -21,7 +21,6 @@ import {
   UpdatePatientReportValidator,
   PatientReportIdParamValidator,
 } from '../app/validations/patient-report';
-import { PatientIdParamValidator } from '../app/validations/patient';
 
 const patientReportRouter = Router();
 
@@ -54,7 +53,6 @@ patientReportRouter
     updatePatientReportController
   )
   .delete(
-    allowRoles('admin'),
     PatientReportIdParamValidator,
     deletePatientReportController
   );
