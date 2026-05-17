@@ -4,7 +4,6 @@ generator client {
 
 datasource db {
   provider = "sqlite"
-  url      = env("DATABASE_URL")
 }
 
 model AdminUser {
@@ -495,14 +494,14 @@ model ReportTemplateSection {
   updatedByAdmin Int?     @map("updated_by_admin")
   resourceInfo   String?  @map("resource_info")
 
-  template           ReportTemplate       @relation(fields: [templateId], references: [id])
-  parameter          ParameterMaster      @relation(fields: [parameterId], references: [id])
-  branch             Branch?              @relation(fields: [branchId], references: [id])
-  organization       Organization?        @relation(fields: [organizationId], references: [id])
-  createdByUser      User?                @relation("ReportSectionCreatedByUser", fields: [createdBy], references: [id])
-  updatedByUser      User?                @relation("ReportSectionUpdatedByUser", fields: [updatedBy], references: [id])
-  createdByAdminUser AdminUser?           @relation("ReportSectionCreatedByAdmin", fields: [createdByAdmin], references: [id])
-  updatedByAdminUser AdminUser?           @relation("ReportSectionUpdatedByAdmin", fields: [updatedByAdmin], references: [id])
+  template           ReportTemplate  @relation(fields: [templateId], references: [id])
+  parameter          ParameterMaster @relation(fields: [parameterId], references: [id])
+  branch             Branch?         @relation(fields: [branchId], references: [id])
+  organization       Organization?   @relation(fields: [organizationId], references: [id])
+  createdByUser      User?           @relation("ReportSectionCreatedByUser", fields: [createdBy], references: [id])
+  updatedByUser      User?           @relation("ReportSectionUpdatedByUser", fields: [updatedBy], references: [id])
+  createdByAdminUser AdminUser?      @relation("ReportSectionCreatedByAdmin", fields: [createdByAdmin], references: [id])
+  updatedByAdminUser AdminUser?      @relation("ReportSectionUpdatedByAdmin", fields: [updatedByAdmin], references: [id])
 
   @@map("report_template_sections")
 }
@@ -554,12 +553,12 @@ model PatientReportValue {
   updatedByAdmin    Int?     @map("updated_by_admin")
   resourceInfo      String?  @map("resource_info")
 
-  report             PatientReport         @relation(fields: [reportId], references: [id])
-  templateSection    ReportTemplate        @relation(fields: [templateSectionId], references: [id])
-  createdByUser      User?                 @relation("PatientReportValueCreatedByUser", fields: [createdBy], references: [id])
-  updatedByUser      User?                 @relation("PatientReportValueUpdatedByUser", fields: [updatedBy], references: [id])
-  createdByAdminUser AdminUser?            @relation("PatientReportValueCreatedByAdmin", fields: [createdByAdmin], references: [id])
-  updatedByAdminUser AdminUser?            @relation("PatientReportValueUpdatedByAdmin", fields: [updatedByAdmin], references: [id])
+  report             PatientReport  @relation(fields: [reportId], references: [id])
+  templateSection    ReportTemplate @relation(fields: [templateSectionId], references: [id])
+  createdByUser      User?          @relation("PatientReportValueCreatedByUser", fields: [createdBy], references: [id])
+  updatedByUser      User?          @relation("PatientReportValueUpdatedByUser", fields: [updatedBy], references: [id])
+  createdByAdminUser AdminUser?     @relation("PatientReportValueCreatedByAdmin", fields: [createdByAdmin], references: [id])
+  updatedByAdminUser AdminUser?     @relation("PatientReportValueUpdatedByAdmin", fields: [updatedByAdmin], references: [id])
 
   @@map("patient_report_values")
 }
@@ -577,12 +576,12 @@ model PatientReportImage {
   updatedByAdmin    Int?     @map("updated_by_admin")
   resourceInfo      String?  @map("resource_info")
 
-  report             PatientReport          @relation(fields: [reportId], references: [id])
-  templateSection    ReportTemplate?        @relation(fields: [templateSectionId], references: [id])
-  createdByUser      User?                  @relation("PatientReportImageCreatedByUser", fields: [createdBy], references: [id])
-  updatedByUser      User?                  @relation("PatientReportImageUpdatedByUser", fields: [updatedBy], references: [id])
-  createdByAdminUser AdminUser?             @relation("PatientReportImageCreatedByAdmin", fields: [createdByAdmin], references: [id])
-  updatedByAdminUser AdminUser?             @relation("PatientReportImageUpdatedByAdmin", fields: [updatedByAdmin], references: [id])
+  report             PatientReport   @relation(fields: [reportId], references: [id])
+  templateSection    ReportTemplate? @relation(fields: [templateSectionId], references: [id])
+  createdByUser      User?           @relation("PatientReportImageCreatedByUser", fields: [createdBy], references: [id])
+  updatedByUser      User?           @relation("PatientReportImageUpdatedByUser", fields: [updatedBy], references: [id])
+  createdByAdminUser AdminUser?      @relation("PatientReportImageCreatedByAdmin", fields: [createdByAdmin], references: [id])
+  updatedByAdminUser AdminUser?      @relation("PatientReportImageUpdatedByAdmin", fields: [updatedByAdmin], references: [id])
 
   @@map("patient_report_images")
 }

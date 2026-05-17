@@ -4,6 +4,7 @@ import { AuthenticatedUser } from '../../config/types/auth';
 import { ICreatePatient, IUpdatePatient } from '../../config/types/patient';
 import { MESSAGES } from '../../utils/messages';
 import { applyBranchScope } from '../../utils/model_helper';
+import { Prisma } from '@prisma/client';
 
 // ---------------------------------------------------------------------------
 // UHID / RecordId generator (sequential, scoped to branch or org)
@@ -182,10 +183,11 @@ export const createPatient = async (payload: ICreatePatient) => {
   const today = DateTime.now().toISODate()!;
 
   const recordId = (await generateUhid(payload.branchId, payload.organizationId));
-  const data = {
+
+  const data: Prisma.PatientRegistrationUncheckedCreateInput = {
     ...payload,
     recordId,
-    uhid: payload.uhid ?? null,
+    uhid: payload.uhid ?? '',
     registrationDate: payload.registrationDate ?? today,
     caseDate: payload.caseDate ?? today,
   };
@@ -193,7 +195,7 @@ export const createPatient = async (payload: ICreatePatient) => {
   const patient = await prisma.patientRegistration.create({ data });
 
   return {
-    success : true,
+    success: true,
     message: MESSAGES.PATIENT_CREATED_SUCCESSFULLY,
     data: patient,
   };
